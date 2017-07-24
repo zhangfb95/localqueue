@@ -9,5 +9,7 @@ import lombok.Data;
 public class ConfigBean {
 
     private String fileName;
+    private String dbFileName;
+    private String dataFileName;
     private boolean createIfNotExist = true;
 }
