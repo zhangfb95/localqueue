@@ -1,9 +1,9 @@
 package com.zhangfb95.localqueue.logic.core;
 
+import com.zhangfb95.localqueue.logic.bean.IdxBean;
 import com.zhangfb95.localqueue.logic.bean.InputBean;
 import com.zhangfb95.localqueue.util.CloseUtil;
-import lombok.Getter;
-import lombok.Setter;
+import com.zhangfb95.localqueue.util.FileUtil;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.Objects;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -23,27 +24,62 @@ public class DefaultLocalQueue implements LocalQueue {
     private static final String IDX_FILE_NAME = "localqueue_idx.db";
     private IdxFileFacade idxFileFacade;
     private Lock lock = new ReentrantReadWriteLock().writeLock();
-    private RandomAccessFile dataAccessFile = null;
-    private FileChannel dataFileChannel = null;
-    private MappedByteBuffer mappedByteBuffer;
+    private RandomAccessFile writeDataAccessFile = null;
+    private FileChannel writeDataFileChannel = null;
+    private MappedByteBuffer writeMappedByteBuffer;
+
+
+    private RandomAccessFile readDataAccessFile = null;
+    private FileChannel readDataFileChannel = null;
+    private MappedByteBuffer readMappedByteBuffer;
+
     private long fileSize = 1024L * 1024L * 10L;
 
-    @Getter
-    @Setter
     private InputBean inputBean;
     private Context context;
 
-    public void init() {
+    public DefaultLocalQueue(InputBean inputBean) {
+        this.inputBean = inputBean;
         context = new Context();
-        context.setInputBean(inputBean);
+        context.setInputBean(this.inputBean);
+    }
+
+    public void init() {
         String idxFilePath = inputBean.getStorageDir() + File.separator + IDX_FILE_NAME;
         idxFileFacade = new IdxFileFacade(idxFilePath);
         context.setIdxBean(new Initializer().loadIdxBean(inputBean, idxFileFacade));
 
         try {
-            dataFileChannel = dataAccessFile.getChannel();
-            mappedByteBuffer = dataFileChannel.map(FileChannel.MapMode.READ_WRITE, 0L,
-                                                   fileSize);
+            IdxBean idxBean = idxFileFacade.poll();
+            if (Objects.equals(idxBean.getReadDataFileIdx(), idxBean.getWriteDataFileIdx())) {
+                String writeDataFileName = inputBean.getStorageDir() + File.separator
+                                           + "localqueue_data_" + idxBean.getWriteDataFileIdx() + ".db";
+                FileUtil.makeFile(new File(writeDataFileName));
+                writeDataAccessFile = new RandomAccessFile(writeDataFileName, "rwd");
+                writeDataFileChannel = writeDataAccessFile.getChannel();
+                writeMappedByteBuffer = writeDataFileChannel.map(FileChannel.MapMode.READ_WRITE, 0L,
+                                                                 fileSize);
+
+                readDataAccessFile = writeDataAccessFile;
+                readDataFileChannel = writeDataFileChannel;
+                readMappedByteBuffer = writeMappedByteBuffer;
+            } else {
+                String writeDataFileName = inputBean.getStorageDir() + File.separator
+                                           + "localqueue_data_" + idxBean.getWriteDataFileIdx() + ".db";
+                FileUtil.makeFile(new File(writeDataFileName));
+                writeDataAccessFile = new RandomAccessFile(writeDataFileName, "rwd");
+                writeDataFileChannel = writeDataAccessFile.getChannel();
+                writeMappedByteBuffer = writeDataFileChannel.map(FileChannel.MapMode.READ_WRITE, 0L,
+                                                                 fileSize);
+
+                String readDataFileName = inputBean.getStorageDir() + File.separator
+                                          + "localqueue_data_" + idxBean.getReadDataFileIdx() + ".db";
+                FileUtil.makeFile(new File(readDataFileName));
+                readDataAccessFile = new RandomAccessFile(readDataFileName, "rwd");
+                readDataFileChannel = readDataAccessFile.getChannel();
+                readMappedByteBuffer = readDataFileChannel.map(FileChannel.MapMode.READ_WRITE, 0L,
+                                                                 fileSize);
+            }
         } catch (IOException e) {
             log.error(e.getLocalizedMessage(), e);
         }
@@ -52,9 +88,9 @@ public class DefaultLocalQueue implements LocalQueue {
     @Override public boolean offer(byte[] e) {
         lock.lock();
         try {
-            mappedByteBuffer.position(idxFileFacade.poll().getWriteIdx());
-            mappedByteBuffer.putInt(e.length);
-            mappedByteBuffer.put(e);
+            writeMappedByteBuffer.position(idxFileFacade.poll().getWriteIdx());
+            writeMappedByteBuffer.putInt(e.length);
+            writeMappedByteBuffer.put(e);
             idxFileFacade.offerWriteIdx(4 + e.length);
             return true;
         } finally {
@@ -66,10 +102,10 @@ public class DefaultLocalQueue implements LocalQueue {
         lock.lock();
         try {
             int readIndex = idxFileFacade.poll().getReadIdx();
-            int length = mappedByteBuffer.getInt(readIndex);
+            int length = readMappedByteBuffer.getInt(readIndex);
             byte[] data = new byte[length];
             for (int i = 0; i < length; i++) {
-                data[i] = mappedByteBuffer.get(readIndex + 4 + i);
+                data[i] = readMappedByteBuffer.get(readIndex + 4 + i);
             }
             idxFileFacade.offerReadIdx(length + 4);
             return data;
@@ -79,8 +115,10 @@ public class DefaultLocalQueue implements LocalQueue {
     }
 
     @Override public void close() {
-        CloseUtil.closeQuietly(dataFileChannel);
-        CloseUtil.closeQuietly(dataAccessFile);
+        CloseUtil.closeQuietly(writeDataFileChannel);
+        CloseUtil.closeQuietly(writeDataAccessFile);
+        CloseUtil.closeQuietly(readDataFileChannel);
+        CloseUtil.closeQuietly(readDataAccessFile);
         idxFileFacade.close();
     }
 }

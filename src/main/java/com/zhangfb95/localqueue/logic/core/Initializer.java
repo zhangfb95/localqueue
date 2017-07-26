@@ -2,10 +2,10 @@ package com.zhangfb95.localqueue.logic.core;
 
 import com.zhangfb95.localqueue.logic.bean.IdxBean;
 import com.zhangfb95.localqueue.logic.bean.InputBean;
+import com.zhangfb95.localqueue.util.FileUtil;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
-import java.io.IOException;
 
 /**
  * @author zhangfb
@@ -21,7 +21,7 @@ public class Initializer {
         String storageDir = inputBean.getStorageDir();
         makeDir(new File(storageDir));
         String idxFilePath = storageDir + File.separator + IDX_FILE_NAME;
-        makeFile(new File(idxFilePath));
+        FileUtil.makeFile(new File(idxFilePath));
         idxFileFacade.init();
         return idxFileFacade.poll();
     }
@@ -46,20 +46,5 @@ public class Initializer {
         if (!flag) {
             log.error("directory create error for, " + file.getAbsolutePath());
         }
-    }
-
-    private void makeFile(File file) {
-        if (file.exists()) {
-            return;
-        }
-        try {
-            boolean flag = file.createNewFile();
-            if (!flag) {
-                log.error("file create error for return result, " + false);
-            }
-        } catch (IOException e) {
-            log.error("file create error, " + e.getLocalizedMessage(), e);
-        }
-        return;
     }
 }
