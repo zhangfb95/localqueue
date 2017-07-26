@@ -1,6 +1,7 @@
 package com.zhangfb95.localqueue.logic.core;
 
 import com.zhangfb95.localqueue.logic.bean.InputBean;
+import com.zhangfb95.localqueue.util.CloseUtil;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +24,7 @@ public class DefaultLocalQueue implements LocalQueue {
     private IdxFileFacade idxFileFacade;
     private Lock lock = new ReentrantReadWriteLock().writeLock();
     private RandomAccessFile dataAccessFile = null;
+    private FileChannel dataFileChannel = null;
     private MappedByteBuffer mappedByteBuffer;
     private long fileSize = 1024L * 1024L * 10L;
 
@@ -39,8 +41,9 @@ public class DefaultLocalQueue implements LocalQueue {
         context.setIdxBean(new Initializer().loadIdxBean(inputBean, idxFileFacade));
 
         try {
-            mappedByteBuffer = dataAccessFile.getChannel().map(FileChannel.MapMode.READ_WRITE, 0L,
-                                                               fileSize);
+            dataFileChannel = dataAccessFile.getChannel();
+            mappedByteBuffer = dataFileChannel.map(FileChannel.MapMode.READ_WRITE, 0L,
+                                                   fileSize);
         } catch (IOException e) {
             log.error(e.getLocalizedMessage(), e);
         }
@@ -76,6 +79,8 @@ public class DefaultLocalQueue implements LocalQueue {
     }
 
     @Override public void close() {
-
+        CloseUtil.closeQuietly(dataFileChannel);
+        CloseUtil.closeQuietly(dataAccessFile);
+        idxFileFacade.close();
     }
 }

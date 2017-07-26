@@ -1,6 +1,7 @@
 package com.zhangfb95.localqueue.logic.core;
 
 import com.zhangfb95.localqueue.logic.bean.IdxBean;
+import com.zhangfb95.localqueue.util.CloseUtil;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -97,6 +98,11 @@ public class IdxFileFacade {
         } finally {
             lock.unlock();
         }
+    }
+
+    void close() {
+        CloseUtil.closeQuietly(fc);
+        CloseUtil.closeQuietly(file);
     }
 
     private Integer get(int position, Integer defaultValue) {
