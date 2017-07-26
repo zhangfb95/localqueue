@@ -8,8 +8,8 @@ import lombok.Data;
 @Data
 public class IdxBean {
 
-    private Long readDataFileIdx; // 数据文件读索引
-    private Long readIdx; // 读序号
-    private Long writeDataFileIdx; // 数据文件写索引
-    private Long writeIdx; // 写序号
+    private Integer readDataFileIdx; // 数据文件读索引
+    private Integer readIdx; // 读序号
+    private Integer writeDataFileIdx; // 数据文件写索引
+    private Integer writeIdx; // 写序号
 }

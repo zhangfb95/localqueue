@@ -41,10 +41,10 @@ public class IdxFileFacade {
         lock.lock();
         try {
             IdxBean idxBean = new IdxBean();
-            idxBean.setReadDataFileIdx(get(0, 0L));
-            idxBean.setReadIdx(get(1, 0L));
-            idxBean.setWriteDataFileIdx(get(2, 0L));
-            idxBean.setWriteIdx(get(3, 0L));
+            idxBean.setReadDataFileIdx(get(0, 0));
+            idxBean.setReadIdx(get(1, 0));
+            idxBean.setWriteDataFileIdx(get(2, 0));
+            idxBean.setWriteIdx(get(3, 0));
             return idxBean;
         } finally {
             lock.unlock();
@@ -63,9 +63,45 @@ public class IdxFileFacade {
         }
     }
 
-    private Long get(int position, Long defaultValue) {
+    void offerReadDataFileIdx(Integer value) {
+        lock.lock();
         try {
-            return mappedByteBuffer.getLong(position);
+            put(0, value);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    void offerReadIdx(Integer value) {
+        lock.lock();
+        try {
+            put(1, value);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    void offerWriteDataFileIdx(Integer value) {
+        lock.lock();
+        try {
+            put(2, value);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    void offerWriteIdx(Integer value) {
+        lock.lock();
+        try {
+            put(3, value);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private Integer get(int position, Integer defaultValue) {
+        try {
+            return mappedByteBuffer.getInt(position);
         } catch (Exception e) {
             mappedByteBuffer.position(position);
             mappedByteBuffer.putLong(defaultValue);
@@ -73,7 +109,7 @@ public class IdxFileFacade {
         return defaultValue;
     }
 
-    private void put(int position, Long value) {
+    private void put(int position, Integer value) {
         mappedByteBuffer.position(position);
         mappedByteBuffer.putLong(value);
     }
