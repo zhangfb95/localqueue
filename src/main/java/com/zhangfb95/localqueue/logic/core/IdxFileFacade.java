@@ -20,7 +20,7 @@ public class IdxFileFacade {
     private Lock lock = new ReentrantReadWriteLock().writeLock();
 
     private String filePath;
-    RandomAccessFile file;
+    private RandomAccessFile file;
     private FileChannel fc;
     private MappedByteBuffer mappedByteBuffer;
 
