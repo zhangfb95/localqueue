@@ -17,8 +17,11 @@ public class LocalQueueTest {
 
         try {
             localQueue.init();
-            //localQueue.offer("nimei张付兵3".getBytes("utf-8"));
-            //localQueue.offer("nimei张付兵4".getBytes("utf-8"));
+            /*localQueue.offer("nimei张付兵777".getBytes("utf-8"));
+            localQueue.offer("nimei张付兵888".getBytes("utf-8"));
+            localQueue.offer("nimei张付兵999".getBytes("utf-8"));*/
+            System.out.println(new String(localQueue.poll(), "utf-8"));
+            System.out.println(new String(localQueue.poll(), "utf-8"));
             System.out.println(new String(localQueue.poll(), "utf-8"));
         } finally {
             localQueue.close();

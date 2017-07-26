@@ -30,7 +30,7 @@ public class IdxFileFacade {
 
     void init() {
         try {
-            file = new RandomAccessFile(filePath, "rw");
+            file = new RandomAccessFile(filePath, "rwd");
             fc = file.getChannel();
             mappedByteBuffer = fc.map(FileChannel.MapMode.READ_WRITE, 0L, 1024L * 1024L * 10L);
         } catch (IOException e) {
@@ -109,14 +109,16 @@ public class IdxFileFacade {
         try {
             return mappedByteBuffer.getInt(position);
         } catch (Exception e) {
+            log.error(e.getLocalizedMessage(), e);
             mappedByteBuffer.position(position);
-            mappedByteBuffer.putLong(defaultValue);
+            mappedByteBuffer.putInt(defaultValue);
         }
         return defaultValue;
     }
 
     private void put(int position, Integer value) {
         mappedByteBuffer.position(position);
-        mappedByteBuffer.putLong(value);
+        mappedByteBuffer.putInt(value);
+        mappedByteBuffer.force();
     }
 }

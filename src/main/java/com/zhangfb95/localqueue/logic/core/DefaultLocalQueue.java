@@ -78,7 +78,7 @@ public class DefaultLocalQueue implements LocalQueue {
                 readDataAccessFile = new RandomAccessFile(readDataFileName, "rwd");
                 readDataFileChannel = readDataAccessFile.getChannel();
                 readMappedByteBuffer = readDataFileChannel.map(FileChannel.MapMode.READ_WRITE, 0L,
-                                                                 fileSize);
+                                                               fileSize);
             }
         } catch (IOException e) {
             log.error(e.getLocalizedMessage(), e);
@@ -88,10 +88,11 @@ public class DefaultLocalQueue implements LocalQueue {
     @Override public boolean offer(byte[] e) {
         lock.lock();
         try {
-            writeMappedByteBuffer.position(idxFileFacade.poll().getWriteIdx());
+            int writeIndex = idxFileFacade.poll().getWriteIdx();
+            writeMappedByteBuffer.position(writeIndex);
             writeMappedByteBuffer.putInt(e.length);
             writeMappedByteBuffer.put(e);
-            idxFileFacade.offerWriteIdx(4 + e.length);
+            idxFileFacade.offerWriteIdx(writeIndex + 4 + e.length);
             return true;
         } finally {
             lock.unlock();
@@ -107,7 +108,7 @@ public class DefaultLocalQueue implements LocalQueue {
             for (int i = 0; i < length; i++) {
                 data[i] = readMappedByteBuffer.get(readIndex + 4 + i);
             }
-            idxFileFacade.offerReadIdx(length + 4);
+            idxFileFacade.offerReadIdx(readIndex + length + 4);
             return data;
         } finally {
             lock.unlock();
