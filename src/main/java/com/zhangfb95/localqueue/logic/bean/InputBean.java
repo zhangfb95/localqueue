@@ -9,5 +9,5 @@ import lombok.Data;
 public class InputBean {
 
     private String storageDir; // 存储位置
-    private Long dataFileCapacity; // 数据文件容量
+    private Integer dataFileCapacity; // 数据文件容量
 }

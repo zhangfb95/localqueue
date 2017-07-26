@@ -11,9 +11,9 @@ import java.io.IOException;
 @Slf4j
 public class FileUtil {
 
-    public static void makeFile(File file) {
+    public static boolean makeFile(File file) {
         if (file.exists()) {
-            return;
+            return false;
         }
         try {
             boolean flag = file.createNewFile();
@@ -23,5 +23,6 @@ public class FileUtil {
         } catch (IOException e) {
             log.error("file create error, " + e.getLocalizedMessage(), e);
         }
+        return true;
     }
 }

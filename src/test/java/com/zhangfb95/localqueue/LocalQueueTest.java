@@ -13,6 +13,7 @@ public class LocalQueueTest {
     @Test
     public void test() throws Exception {
         InputBean inputBean = new InputBean();
+        inputBean.setDataFileCapacity(1024 * 1024);
         inputBean.setStorageDir("/Users/pro/ws/learn/localqueue/src/main/resources");
         LocalQueue localQueue = new DefaultLocalQueue(inputBean);
 
@@ -30,6 +31,7 @@ public class LocalQueueTest {
     @Test
     public void test2() throws Exception {
         InputBean inputBean = new InputBean();
+        inputBean.setDataFileCapacity(1024 * 1024);
         inputBean.setStorageDir("/Users/pro/ws/learn/localqueue/src/main/resources");
         LocalQueue localQueue = new DefaultLocalQueue(inputBean);
 

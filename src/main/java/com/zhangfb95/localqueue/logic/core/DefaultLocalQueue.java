@@ -55,11 +55,16 @@ public class DefaultLocalQueue implements LocalQueue {
             if (Objects.equals(idxBean.getReadDataFileIdx(), idxBean.getWriteDataFileIdx())) {
                 String writeDataFileName = inputBean.getStorageDir() + File.separator
                                            + "localqueue_data_" + idxBean.getWriteDataFileIdx() + ".db";
-                FileUtil.makeFile(new File(writeDataFileName));
+                boolean newCreated = FileUtil.makeFile(new File(writeDataFileName));
                 writeDataAccessFile = new RandomAccessFile(writeDataFileName, "rwd");
                 writeDataFileChannel = writeDataAccessFile.getChannel();
                 writeMappedByteBuffer = writeDataFileChannel.map(FileChannel.MapMode.READ_WRITE, 0L,
-                                                                 fileSize);
+                                                                 inputBean.getDataFileCapacity());
+
+                if (newCreated) {
+                    offerFileCapacity();
+                    offerNextFileIdx();
+                }
 
                 readDataAccessFile = writeDataAccessFile;
                 readDataFileChannel = writeDataFileChannel;
@@ -67,11 +72,16 @@ public class DefaultLocalQueue implements LocalQueue {
             } else {
                 String writeDataFileName = inputBean.getStorageDir() + File.separator
                                            + "localqueue_data_" + idxBean.getWriteDataFileIdx() + ".db";
-                FileUtil.makeFile(new File(writeDataFileName));
+                boolean newCreated = FileUtil.makeFile(new File(writeDataFileName));
                 writeDataAccessFile = new RandomAccessFile(writeDataFileName, "rwd");
                 writeDataFileChannel = writeDataAccessFile.getChannel();
                 writeMappedByteBuffer = writeDataFileChannel.map(FileChannel.MapMode.READ_WRITE, 0L,
-                                                                 fileSize);
+                                                                 inputBean.getDataFileCapacity());
+
+                if (newCreated) {
+                    offerFileCapacity();
+                    offerNextFileIdx();
+                }
 
                 String readDataFileName = inputBean.getStorageDir() + File.separator
                                           + "localqueue_data_" + idxBean.getReadDataFileIdx() + ".db";
@@ -79,7 +89,7 @@ public class DefaultLocalQueue implements LocalQueue {
                 readDataAccessFile = new RandomAccessFile(readDataFileName, "rwd");
                 readDataFileChannel = readDataAccessFile.getChannel();
                 readMappedByteBuffer = readDataFileChannel.map(FileChannel.MapMode.READ_WRITE, 0L,
-                                                               fileSize);
+                                                               inputBean.getDataFileCapacity());
             }
         } catch (IOException e) {
             log.error(e.getLocalizedMessage(), e);
@@ -104,6 +114,13 @@ public class DefaultLocalQueue implements LocalQueue {
         lock.lock();
         try {
             int readIndex = idxFileFacade.poll().getReadIdx();
+            int writeIndex = idxFileFacade.poll().getWriteIdx();
+            if (readIndex == 0) {
+                readIndex += 8;
+            }
+            if (readIndex >= writeIndex) {
+                return null;
+            }
             int length = readMappedByteBuffer.getInt(readIndex);
             byte[] data = new byte[length];
             for (int i = 0; i < length; i++) {
@@ -122,5 +139,29 @@ public class DefaultLocalQueue implements LocalQueue {
         CloseUtil.closeQuietly(readDataFileChannel);
         CloseUtil.closeQuietly(readDataAccessFile);
         idxFileFacade.close();
+    }
+
+    private void offerFileCapacity() {
+        lock.lock();
+        try {
+            int writeIndex = idxFileFacade.poll().getWriteIdx();
+            writeMappedByteBuffer.position(0);
+            writeMappedByteBuffer.putInt(inputBean.getDataFileCapacity());
+            idxFileFacade.offerWriteIdx(writeIndex + 4);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private void offerNextFileIdx() {
+        lock.lock();
+        try {
+            int writeIndex = idxFileFacade.poll().getWriteIdx();
+            writeMappedByteBuffer.position(4);
+            writeMappedByteBuffer.putInt(idxFileFacade.poll().getWriteDataFileIdx() + 1);
+            idxFileFacade.offerWriteIdx(writeIndex + 4);
+        } finally {
+            lock.unlock();
+        }
     }
 }
