@@ -100,6 +100,31 @@ public class DefaultLocalQueue implements LocalQueue {
         lock.lock();
         try {
             int writeIndex = idxFileFacade.poll().getWriteIdx();
+
+            // 如果超过文件的容量，则需要另外开启一个文件
+            if (writeIndex + 4 + e.length > writeMappedByteBuffer.getInt(0)) {
+                try {
+                    int newWriteDataFileIdx = idxFileFacade.poll().getWriteDataFileIdx() + 1;
+                    String writeDataFileName = inputBean.getStorageDir() + File.separator
+                                               + "localqueue_data_" + newWriteDataFileIdx + ".db";
+                    boolean newCreated = FileUtil.makeFile(new File(writeDataFileName));
+                    writeDataAccessFile = new RandomAccessFile(writeDataFileName, "rwd");
+                    writeDataFileChannel = writeDataAccessFile.getChannel();
+                    writeMappedByteBuffer = writeDataFileChannel.map(FileChannel.MapMode.READ_WRITE, 0L,
+                                                                     inputBean.getDataFileCapacity());
+                    idxFileFacade.offerWriteDataFileIdx(newWriteDataFileIdx);
+                    idxFileFacade.offerWriteIdx(0);
+
+                    if (newCreated) {
+                        offerFileCapacity();
+                        offerNextFileIdx();
+                    }
+                    writeIndex = idxFileFacade.poll().getWriteIdx();
+                } catch (IOException e1) {
+                    log.error(e1.getLocalizedMessage(), e);
+                }
+            }
+
             writeMappedByteBuffer.position(writeIndex);
             writeMappedByteBuffer.putInt(e.length);
             writeMappedByteBuffer.put(e);
@@ -122,6 +147,12 @@ public class DefaultLocalQueue implements LocalQueue {
                 return null;
             }
             int length = readMappedByteBuffer.getInt(readIndex);
+
+            // 如果超过文件的容量，则需要另外开启一个文件
+            if (readIndex + length + 4 > readMappedByteBuffer.getInt(0)) {
+
+            }
+
             byte[] data = new byte[length];
             for (int i = 0; i < length; i++) {
                 data[i] = readMappedByteBuffer.get(readIndex + 4 + i);

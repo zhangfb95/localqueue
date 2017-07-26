@@ -13,16 +13,20 @@ public class LocalQueueTest {
     @Test
     public void test() throws Exception {
         InputBean inputBean = new InputBean();
-        inputBean.setDataFileCapacity(1024 * 1024);
+        inputBean.setDataFileCapacity(1024);
         inputBean.setStorageDir("/Users/pro/ws/learn/localqueue/src/main/resources");
         LocalQueue localQueue = new DefaultLocalQueue(inputBean);
 
         try {
             localQueue.init();
-            localQueue.offer("nimei张付兵777".getBytes("utf-8"));
-            localQueue.offer("nimei张付兵888".getBytes("utf-8"));
+            for (int i = 0; i < 2000; i++) {
+                System.out.println("id = " + i);
+                localQueue.offer(("nimei张付兵-newold" + i).getBytes("utf-8"));
+            }
+
+            /*localQueue.offer("nimei张付兵888".getBytes("utf-8"));
             localQueue.offer("nimei张付兵999".getBytes("utf-8"));
-            localQueue.offer("nimei张付兵999".getBytes("utf-8"));
+            localQueue.offer("nimei张付兵999".getBytes("utf-8"));*/
         } finally {
             localQueue.close();
         }
