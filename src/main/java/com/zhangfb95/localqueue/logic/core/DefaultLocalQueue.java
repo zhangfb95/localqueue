@@ -44,6 +44,7 @@ public class DefaultLocalQueue implements LocalQueue {
         context.setInputBean(this.inputBean);
     }
 
+    @Override
     public void init() {
         String idxFilePath = inputBean.getStorageDir() + File.separator + IDX_FILE_NAME;
         idxFileFacade = new IdxFileFacade(idxFilePath);

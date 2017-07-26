@@ -2,6 +2,7 @@ package com.zhangfb95.localqueue;
 
 import com.zhangfb95.localqueue.logic.bean.InputBean;
 import com.zhangfb95.localqueue.logic.core.DefaultLocalQueue;
+import com.zhangfb95.localqueue.logic.core.LocalQueue;
 import org.junit.Test;
 
 /**
@@ -13,7 +14,7 @@ public class LocalQueueTest {
     public void test() throws Exception {
         InputBean inputBean = new InputBean();
         inputBean.setStorageDir("/Users/pro/ws/learn/localqueue/src/main/resources");
-        DefaultLocalQueue localQueue = new DefaultLocalQueue(inputBean);
+        LocalQueue localQueue = new DefaultLocalQueue(inputBean);
 
         try {
             localQueue.init();
@@ -30,7 +31,7 @@ public class LocalQueueTest {
     public void test2() throws Exception {
         InputBean inputBean = new InputBean();
         inputBean.setStorageDir("/Users/pro/ws/learn/localqueue/src/main/resources");
-        DefaultLocalQueue localQueue = new DefaultLocalQueue(inputBean);
+        LocalQueue localQueue = new DefaultLocalQueue(inputBean);
 
         try {
             localQueue.init();
