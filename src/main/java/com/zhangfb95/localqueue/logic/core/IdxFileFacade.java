@@ -67,7 +67,11 @@ public class IdxFileFacade {
     void offerReadDataFileIdx(Integer value) {
         lock.lock();
         try {
+            IdxBean idxBean = poll();
             put(0, value);
+            put(1, idxBean.getReadIdx());
+            put(2, idxBean.getWriteDataFileIdx());
+            put(3, idxBean.getWriteIdx());
         } finally {
             lock.unlock();
         }
@@ -106,18 +110,21 @@ public class IdxFileFacade {
     }
 
     private Integer get(int position, Integer defaultValue) {
+        int pos = position * 4;
+
         try {
-            return mappedByteBuffer.getInt(position);
+            return mappedByteBuffer.getInt(pos);
         } catch (Exception e) {
             log.error(e.getLocalizedMessage(), e);
-            mappedByteBuffer.position(position);
+            mappedByteBuffer.position(pos);
             mappedByteBuffer.putInt(defaultValue);
         }
         return defaultValue;
     }
 
     private void put(int position, Integer value) {
-        mappedByteBuffer.position(position);
+        int pos = position * 4;
+        mappedByteBuffer.position(pos);
         mappedByteBuffer.putInt(value);
         mappedByteBuffer.force();
     }
