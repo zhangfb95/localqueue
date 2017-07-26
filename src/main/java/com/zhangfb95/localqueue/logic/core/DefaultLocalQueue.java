@@ -139,19 +139,46 @@ public class DefaultLocalQueue implements LocalQueue {
         lock.lock();
         try {
             int readIndex = idxFileFacade.poll().getReadIdx();
-            int writeIndex = idxFileFacade.poll().getWriteIdx();
             if (readIndex == 0) {
                 readIndex += 8;
             }
-            if (readIndex >= writeIndex) {
-                return null;
-            }
+
             int length = readMappedByteBuffer.getInt(readIndex);
 
             // 如果超过文件的容量，则需要另外开启一个文件
             if (readIndex + length + 4 > readMappedByteBuffer.getInt(0)) {
+                try {
+                    CloseUtil.closeQuietly(readDataFileChannel);
+                    CloseUtil.closeQuietly(readDataAccessFile);
 
+                    int nextFileIdx = readMappedByteBuffer.getInt(4);
+                    String readDataFileName = inputBean.getStorageDir() + File.separator
+                                              + "localqueue_data_" + nextFileIdx + ".db";
+                    readDataAccessFile = new RandomAccessFile(readDataFileName, "rwd");
+                    readDataFileChannel = readDataAccessFile.getChannel();
+                    readMappedByteBuffer = readDataFileChannel.map(FileChannel.MapMode.READ_WRITE, 0L,
+                                                                   inputBean.getDataFileCapacity());
+                    idxFileFacade.offerReadIdx(0);
+                    idxFileFacade.offerReadDataFileIdx(nextFileIdx);
+                } catch (IOException e) {
+                    log.error(e.getLocalizedMessage(), e);
+                }
             }
+
+            // 如果读取和写入的文件是同一个，且读索引比写索引大，则认为没有下一个可读的数据
+            int writeIndex = idxFileFacade.poll().getWriteIdx();
+            if (Objects.equals(idxFileFacade.poll().getReadDataFileIdx(),
+                               idxFileFacade.poll().getWriteDataFileIdx()) &&
+                readIndex >= writeIndex) {
+                return null;
+            }
+
+            // 重新载入读索引和数据长度
+            readIndex = idxFileFacade.poll().getReadIdx();
+            if (readIndex == 0) {
+                readIndex += 8;
+            }
+            length = readMappedByteBuffer.getInt(readIndex);
 
             byte[] data = new byte[length];
             for (int i = 0; i < length; i++) {

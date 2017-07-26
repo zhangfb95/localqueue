@@ -41,9 +41,18 @@ public class LocalQueueTest {
 
         try {
             localQueue.init();
+            for (int i = 0; i < 200; i++) {
+                byte[] data = localQueue.poll();
+                if (data != null) {
+                    System.out.println(new String(data, "utf-8"));
+                } else {
+                    System.out.println("end!");
+                    break;
+                }
+            }
+            /*System.out.println(new String(localQueue.poll(), "utf-8"));
             System.out.println(new String(localQueue.poll(), "utf-8"));
-            System.out.println(new String(localQueue.poll(), "utf-8"));
-            System.out.println(new String(localQueue.poll(), "utf-8"));
+            System.out.println(new String(localQueue.poll(), "utf-8"));*/
         } finally {
             localQueue.close();
         }
