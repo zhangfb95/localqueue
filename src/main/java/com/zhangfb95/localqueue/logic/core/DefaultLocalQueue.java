@@ -47,46 +47,43 @@ public class DefaultLocalQueue implements LocalQueue {
 
         try {
             IdxBean idxBean = idxFileFacade.poll();
-            if (Objects.equals(idxBean.getReadDataFileIdx(), idxBean.getWriteDataFileIdx())) {
-                String writeDataFileName = generateDataFilePath(idxBean.getWriteDataFileIdx());
-                boolean newCreated = FileUtil.makeFile(new File(writeDataFileName));
-                writeDataAccessFile = new RandomAccessFile(writeDataFileName, "rwd");
-                writeDataFileChannel = writeDataAccessFile.getChannel();
-                writeMappedByteBuffer = writeDataFileChannel.map(FileChannel.MapMode.READ_WRITE, 0L,
-                                                                 inputBean.getDataFileCapacity());
+            String writeDataFilePath = generateDataFilePath(idxBean.getWriteDataFileIdx());
+            boolean newCreated = FileUtil.makeFile(new File(writeDataFilePath));
+            writeDataAccessFile = new RandomAccessFile(writeDataFilePath, "rwd");
+            writeDataFileChannel = writeDataAccessFile.getChannel();
+            writeMappedByteBuffer = writeDataFileChannel.map(FileChannel.MapMode.READ_WRITE, 0L,
+                                                             inputBean.getDataFileCapacity());
 
+            if (newCreated) {
+                offerFileCapacity();
+                offerNextFileIdx();
+            }
+
+            if (isReadAndWriteTheSameFile(idxBean)) {
                 if (newCreated) {
-                    offerFileCapacity();
-                    offerNextFileIdx();
                     offerWriteIdx4New();
                 }
-
-                readDataAccessFile = writeDataAccessFile;
-                readDataFileChannel = writeDataFileChannel;
-                readMappedByteBuffer = writeMappedByteBuffer;
-            } else {
-                String writeDataFileName = generateDataFilePath(idxBean.getWriteDataFileIdx());
-                boolean newCreated = FileUtil.makeFile(new File(writeDataFileName));
-                writeDataAccessFile = new RandomAccessFile(writeDataFileName, "rwd");
-                writeDataFileChannel = writeDataAccessFile.getChannel();
-                writeMappedByteBuffer = writeDataFileChannel.map(FileChannel.MapMode.READ_WRITE, 0L,
-                                                                 inputBean.getDataFileCapacity());
-
-                if (newCreated) {
-                    offerFileCapacity();
-                    offerNextFileIdx();
-                }
-
-                String readDataFileName = generateDataFilePath(idxBean.getReadDataFileIdx());
-                FileUtil.makeFile(new File(readDataFileName));
-                readDataAccessFile = new RandomAccessFile(readDataFileName, "rwd");
-                readDataFileChannel = readDataAccessFile.getChannel();
-                readMappedByteBuffer = readDataFileChannel.map(FileChannel.MapMode.READ_WRITE, 0L,
-                                                               inputBean.getDataFileCapacity());
             }
+
+            String readDataFilePath = generateDataFilePath(idxBean.getReadDataFileIdx());
+            FileUtil.makeFile(new File(readDataFilePath));
+            readDataAccessFile = new RandomAccessFile(readDataFilePath, "rwd");
+            readDataFileChannel = readDataAccessFile.getChannel();
+            readMappedByteBuffer = readDataFileChannel.map(FileChannel.MapMode.READ_WRITE, 0L,
+                                                           inputBean.getDataFileCapacity());
         } catch (IOException e) {
             log.error(e.getLocalizedMessage(), e);
         }
+    }
+
+    /**
+     * 是否读写同一个文件
+     *
+     * @param idxBean 索引bean
+     * @return true：同一文件，false：不同文件
+     */
+    private boolean isReadAndWriteTheSameFile(IdxBean idxBean) {
+        return Objects.equals(idxBean.getReadDataFileIdx(), idxBean.getWriteDataFileIdx());
     }
 
     @Override public boolean offer(byte[] e) {
