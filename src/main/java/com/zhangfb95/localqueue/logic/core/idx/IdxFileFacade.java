@@ -13,6 +13,11 @@ import java.nio.channels.FileChannel;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import static com.zhangfb95.localqueue.logic.core.idx.IdxFileStructureEnum.ReadDataFileIdx;
+import static com.zhangfb95.localqueue.logic.core.idx.IdxFileStructureEnum.ReadIdx;
+import static com.zhangfb95.localqueue.logic.core.idx.IdxFileStructureEnum.WriteDataFileIdx;
+import static com.zhangfb95.localqueue.logic.core.idx.IdxFileStructureEnum.WriteIdx;
+
 /**
  * @author zhangfb
  */
@@ -37,28 +42,21 @@ public class IdxFileFacade implements AutoCloseable {
             fc = file.getChannel();
             mappedByteBuffer = fc.map(FileChannel.MapMode.READ_WRITE, 0L, 1024L * 1024L * 10L);
             if (newCreated) {
-                initParams();
+                initData();
             }
         } catch (IOException e) {
             log.error(e.getLocalizedMessage(), e);
         }
     }
 
-    private void initParams() {
-        offerReadDataFileIdx(0);
-        offerReadIdx(0);
-        offerWriteDataFileIdx(0);
-        offerWriteIdx(0);
-    }
-
     public IdxBean poll() {
         lock.lock();
         try {
             IdxBean idxBean = new IdxBean();
-            idxBean.setReadDataFileIdx(get(0));
-            idxBean.setReadIdx(get(1));
-            idxBean.setWriteDataFileIdx(get(2));
-            idxBean.setWriteIdx(get(3));
+            idxBean.setReadDataFileIdx(get(ReadDataFileIdx));
+            idxBean.setReadIdx(get(ReadIdx));
+            idxBean.setWriteDataFileIdx(get(WriteDataFileIdx));
+            idxBean.setWriteIdx(get(WriteIdx));
             return idxBean;
         } finally {
             lock.unlock();
@@ -68,7 +66,7 @@ public class IdxFileFacade implements AutoCloseable {
     public void offerReadDataFileIdx(Integer value) {
         lock.lock();
         try {
-            put(0, value);
+            put(ReadDataFileIdx, value);
         } finally {
             lock.unlock();
         }
@@ -77,7 +75,7 @@ public class IdxFileFacade implements AutoCloseable {
     public void offerReadIdx(Integer value) {
         lock.lock();
         try {
-            put(1, value);
+            put(ReadIdx, value);
         } finally {
             lock.unlock();
         }
@@ -86,7 +84,7 @@ public class IdxFileFacade implements AutoCloseable {
     public void offerWriteDataFileIdx(Integer value) {
         lock.lock();
         try {
-            put(2, value);
+            put(WriteDataFileIdx, value);
         } finally {
             lock.unlock();
         }
@@ -95,7 +93,7 @@ public class IdxFileFacade implements AutoCloseable {
     public void offerWriteIdx(Integer value) {
         lock.lock();
         try {
-            put(3, value);
+            put(WriteIdx, value);
         } finally {
             lock.unlock();
         }
@@ -107,14 +105,29 @@ public class IdxFileFacade implements AutoCloseable {
         CloseUtil.closeQuietly(file);
     }
 
-    private Integer get(int position) {
-        int pos = position * Integer.BYTES;
-        return mappedByteBuffer.getInt(pos);
+    /**
+     * 初始化数据
+     */
+    private void initData() {
+        final int defaultValue = 0;
+        offerReadDataFileIdx(defaultValue);
+        offerReadIdx(defaultValue);
+        offerWriteDataFileIdx(defaultValue);
+        offerWriteIdx(defaultValue);
     }
 
-    private void put(int position, Integer value) {
-        int pos = position * Integer.BYTES;
-        mappedByteBuffer.position(pos);
+    /**
+     * 获取值
+     */
+    private Integer get(IdxFileStructureEnum structure) {
+        return mappedByteBuffer.getInt(structure.getPos());
+    }
+
+    /**
+     * 设置值
+     */
+    private void put(IdxFileStructureEnum structure, Integer value) {
+        mappedByteBuffer.position(structure.getPos());
         mappedByteBuffer.putInt(value);
         mappedByteBuffer.force();
     }
