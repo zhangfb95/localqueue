@@ -1,7 +1,7 @@
 package com.zhangfb95.localqueue.logic.core;
 
-import com.zhangfb95.localqueue.logic.bean.IdxBean;
 import com.zhangfb95.localqueue.logic.bean.Config;
+import com.zhangfb95.localqueue.logic.bean.IdxBean;
 import com.zhangfb95.localqueue.logic.core.idx.IdxFileFacade;
 import com.zhangfb95.localqueue.util.CloseUtil;
 import com.zhangfb95.localqueue.util.FileUtil;
@@ -15,6 +15,10 @@ import java.nio.channels.FileChannel;
 import java.util.Objects;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import static com.zhangfb95.localqueue.logic.core.data.DataFileStructureEnum.FileCapacity;
+import static com.zhangfb95.localqueue.logic.core.data.DataFileStructureEnum.NextFileIdx;
+import static com.zhangfb95.localqueue.logic.core.data.DataFileStructureEnum.WriteIdx;
 
 /**
  * @author zhangfb
@@ -171,10 +175,10 @@ public class DefaultLocalQueue implements LocalQueue {
     private void offerFileCapacity() {
         lock.lock();
         try {
-            int writeIndex = idxFileFacade.poll().getWriteIdx();
-            writeMappedByteBuffer.position(0);
+            writeMappedByteBuffer.position(FileCapacity.getPos());
             writeMappedByteBuffer.putInt(config.getDataFileCapacity());
-            idxFileFacade.offerWriteIdx(writeIndex + Integer.BYTES);
+            int writeIndex = idxFileFacade.poll().getWriteIdx();
+            idxFileFacade.offerWriteIdx(writeIndex + FileCapacity.getLength());
         } finally {
             lock.unlock();
         }
@@ -183,10 +187,10 @@ public class DefaultLocalQueue implements LocalQueue {
     private void offerNextFileIdx() {
         lock.lock();
         try {
-            int writeIndex = idxFileFacade.poll().getWriteIdx();
-            writeMappedByteBuffer.position(4);
+            writeMappedByteBuffer.position(NextFileIdx.getPos());
             writeMappedByteBuffer.putInt(idxFileFacade.poll().getWriteDataFileIdx() + 1);
-            idxFileFacade.offerWriteIdx(writeIndex + Integer.BYTES);
+            int writeIndex = idxFileFacade.poll().getWriteIdx();
+            idxFileFacade.offerWriteIdx(writeIndex + NextFileIdx.getLength());
         } finally {
             lock.unlock();
         }
@@ -195,8 +199,8 @@ public class DefaultLocalQueue implements LocalQueue {
     private void offerWriteIdx() {
         lock.lock();
         try {
+            writeMappedByteBuffer.position(WriteIdx.getPos());
             int writeIndex = idxFileFacade.poll().getWriteIdx();
-            writeMappedByteBuffer.position(8);
             writeMappedByteBuffer.putInt(writeIndex);
         } finally {
             lock.unlock();
@@ -206,9 +210,10 @@ public class DefaultLocalQueue implements LocalQueue {
     private void offerWriteIdx4New() {
         lock.lock();
         try {
-            offerWriteIdx();
+            writeMappedByteBuffer.position(WriteIdx.getPos());
             int writeIndex = idxFileFacade.poll().getWriteIdx();
-            idxFileFacade.offerWriteIdx(writeIndex + Integer.BYTES);
+            writeMappedByteBuffer.putInt(writeIndex);
+            idxFileFacade.offerWriteIdx(writeIndex + WriteIdx.getLength());
         } finally {
             lock.unlock();
         }
