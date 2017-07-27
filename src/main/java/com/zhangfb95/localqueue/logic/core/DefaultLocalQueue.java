@@ -2,6 +2,7 @@ package com.zhangfb95.localqueue.logic.core;
 
 import com.zhangfb95.localqueue.logic.bean.IdxBean;
 import com.zhangfb95.localqueue.logic.bean.InputBean;
+import com.zhangfb95.localqueue.logic.core.idx.IdxFileFacade;
 import com.zhangfb95.localqueue.util.CloseUtil;
 import com.zhangfb95.localqueue.util.FileUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -37,10 +38,8 @@ public class DefaultLocalQueue implements LocalQueue {
         this.inputBean = inputBean;
     }
 
-    @Override
-    public void init() {
+    @Override public void init() {
         FileUtil.makeDir(new File(inputBean.getStorageDir()));
-        FileUtil.makeFile(new File(inputBean.getIdxFilePath()));
         idxFileFacade = new IdxFileFacade(inputBean.getIdxFilePath());
         idxFileFacade.init();
 
