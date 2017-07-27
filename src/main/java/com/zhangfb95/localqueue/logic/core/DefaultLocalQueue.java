@@ -79,7 +79,7 @@ public class DefaultLocalQueue implements LocalQueue {
             int writeIndex = idxFileFacade.poll().getWriteIdx();
 
             // 如果超过文件的容量，则需要另外开启一个文件
-            if (writeIndex + 4 + e.length > writeMappedByteBuffer.getInt(0)) {
+            if (writeIndex + Integer.BYTES + e.length > writeMappedByteBuffer.getInt(0)) {
                 try {
                     int newWriteDataFileIdx = idxFileFacade.poll().getWriteDataFileIdx() + 1;
                     String writeDataFileName = generateDataFilePath(newWriteDataFileIdx);
@@ -104,7 +104,7 @@ public class DefaultLocalQueue implements LocalQueue {
             writeMappedByteBuffer.position(writeIndex);
             writeMappedByteBuffer.putInt(e.length);
             writeMappedByteBuffer.put(e);
-            idxFileFacade.offerWriteIdx(writeIndex + 4 + e.length);
+            idxFileFacade.offerWriteIdx(writeIndex + Integer.BYTES + e.length);
             offerWriteIdx();
             return true;
         } finally {
@@ -129,7 +129,7 @@ public class DefaultLocalQueue implements LocalQueue {
             }
 
             // 如果超过文件的容量，则需要另外开启一个文件
-            if (readIndex + length + 4 > readMappedByteBuffer.getInt(8)) {
+            if (readIndex + length + Integer.BYTES > readMappedByteBuffer.getInt(8)) {
                 try {
                     CloseUtil.closeQuietly(readDataFileChannel);
                     CloseUtil.closeQuietly(readDataAccessFile);
@@ -155,9 +155,9 @@ public class DefaultLocalQueue implements LocalQueue {
 
             byte[] data = new byte[length];
             for (int i = 0; i < length; i++) {
-                data[i] = readMappedByteBuffer.get(readIndex + 4 + i);
+                data[i] = readMappedByteBuffer.get(readIndex + Integer.BYTES + i);
             }
-            idxFileFacade.offerReadIdx(readIndex + length + 4);
+            idxFileFacade.offerReadIdx(readIndex + length + Integer.BYTES);
             return data;
         } finally {
             lock.unlock();
@@ -178,7 +178,7 @@ public class DefaultLocalQueue implements LocalQueue {
             int writeIndex = idxFileFacade.poll().getWriteIdx();
             writeMappedByteBuffer.position(0);
             writeMappedByteBuffer.putInt(inputBean.getDataFileCapacity());
-            idxFileFacade.offerWriteIdx(writeIndex + 4);
+            idxFileFacade.offerWriteIdx(writeIndex + Integer.BYTES);
         } finally {
             lock.unlock();
         }
@@ -190,7 +190,7 @@ public class DefaultLocalQueue implements LocalQueue {
             int writeIndex = idxFileFacade.poll().getWriteIdx();
             writeMappedByteBuffer.position(4);
             writeMappedByteBuffer.putInt(idxFileFacade.poll().getWriteDataFileIdx() + 1);
-            idxFileFacade.offerWriteIdx(writeIndex + 4);
+            idxFileFacade.offerWriteIdx(writeIndex + Integer.BYTES);
         } finally {
             lock.unlock();
         }
@@ -212,7 +212,7 @@ public class DefaultLocalQueue implements LocalQueue {
         try {
             offerWriteIdx();
             int writeIndex = idxFileFacade.poll().getWriteIdx();
-            idxFileFacade.offerWriteIdx(writeIndex + 4);
+            idxFileFacade.offerWriteIdx(writeIndex + Integer.BYTES);
         } finally {
             lock.unlock();
         }
