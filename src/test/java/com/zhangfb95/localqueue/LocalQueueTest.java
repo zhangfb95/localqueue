@@ -1,6 +1,6 @@
 package com.zhangfb95.localqueue;
 
-import com.zhangfb95.localqueue.logic.bean.InputBean;
+import com.zhangfb95.localqueue.logic.bean.Config;
 import com.zhangfb95.localqueue.logic.core.DefaultLocalQueue;
 import com.zhangfb95.localqueue.logic.core.LocalQueue;
 import org.junit.Test;
@@ -12,10 +12,10 @@ public class LocalQueueTest {
 
     @Test
     public void test() throws Exception {
-        InputBean inputBean = new InputBean();
-        inputBean.setDataFileCapacity(1024);
-        inputBean.setStorageDir("/Users/pro/tmp/localqueue");
-        LocalQueue localQueue = new DefaultLocalQueue(inputBean);
+        Config config = new Config();
+        config.setDataFileCapacity(1024);
+        config.setStorageDir("/Users/pro/tmp/localqueue");
+        LocalQueue localQueue = new DefaultLocalQueue(config);
 
         try {
             localQueue.init();
@@ -35,10 +35,10 @@ public class LocalQueueTest {
 
     @Test
     public void test2() throws Exception {
-        InputBean inputBean = new InputBean();
-        inputBean.setDataFileCapacity(1024 * 1024);
-        inputBean.setStorageDir("/Users/pro/tmp/localqueue");
-        LocalQueue localQueue = new DefaultLocalQueue(inputBean);
+        Config config = new Config();
+        config.setDataFileCapacity(1024 * 1024);
+        config.setStorageDir("/Users/pro/tmp/localqueue");
+        LocalQueue localQueue = new DefaultLocalQueue(config);
 
         try {
             localQueue.init();

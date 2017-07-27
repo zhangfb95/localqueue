@@ -8,7 +8,7 @@ import java.io.File;
  * @author zhangfb
  */
 @Data
-public class InputBean {
+public class Config {
 
     private String storageDir; // 存储位置
     private Integer dataFileCapacity; // 数据文件容量

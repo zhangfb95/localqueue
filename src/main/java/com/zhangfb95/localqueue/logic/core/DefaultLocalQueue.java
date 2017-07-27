@@ -1,7 +1,7 @@
 package com.zhangfb95.localqueue.logic.core;
 
 import com.zhangfb95.localqueue.logic.bean.IdxBean;
-import com.zhangfb95.localqueue.logic.bean.InputBean;
+import com.zhangfb95.localqueue.logic.bean.Config;
 import com.zhangfb95.localqueue.logic.core.idx.IdxFileFacade;
 import com.zhangfb95.localqueue.util.CloseUtil;
 import com.zhangfb95.localqueue.util.FileUtil;
@@ -23,7 +23,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class DefaultLocalQueue implements LocalQueue {
 
     private Lock lock = new ReentrantReadWriteLock().writeLock();
-    private InputBean inputBean;
+    private Config config;
     private IdxFileFacade idxFileFacade;
 
     private RandomAccessFile writeDataAccessFile = null;
@@ -34,13 +34,13 @@ public class DefaultLocalQueue implements LocalQueue {
     private FileChannel readDataFileChannel = null;
     private MappedByteBuffer readMappedByteBuffer;
 
-    public DefaultLocalQueue(InputBean inputBean) {
-        this.inputBean = inputBean;
+    public DefaultLocalQueue(Config config) {
+        this.config = config;
     }
 
     @Override public void init() {
-        FileUtil.makeDir(new File(inputBean.getStorageDir()));
-        idxFileFacade = new IdxFileFacade(inputBean.getIdxFilePath());
+        FileUtil.makeDir(new File(config.getStorageDir()));
+        idxFileFacade = new IdxFileFacade(config.getIdxFilePath());
         idxFileFacade.init();
 
         try {
@@ -173,7 +173,7 @@ public class DefaultLocalQueue implements LocalQueue {
         try {
             int writeIndex = idxFileFacade.poll().getWriteIdx();
             writeMappedByteBuffer.position(0);
-            writeMappedByteBuffer.putInt(inputBean.getDataFileCapacity());
+            writeMappedByteBuffer.putInt(config.getDataFileCapacity());
             idxFileFacade.offerWriteIdx(writeIndex + Integer.BYTES);
         } finally {
             lock.unlock();
@@ -231,8 +231,8 @@ public class DefaultLocalQueue implements LocalQueue {
      * @return 路径字符串
      */
     private String generateDataFilePath(Integer fileIdx) {
-        String fileName = String.format(inputBean.getDataFileName(), fileIdx);
-        return inputBean.getStorageDir() + File.separator + fileName;
+        String fileName = String.format(config.getDataFileName(), fileIdx);
+        return config.getStorageDir() + File.separator + fileName;
     }
 
     /**
@@ -244,6 +244,6 @@ public class DefaultLocalQueue implements LocalQueue {
      */
     private MappedByteBuffer generateBuffer(FileChannel fileChannel) throws IOException {
         final Long initPosition = 0L;
-        return fileChannel.map(FileChannel.MapMode.READ_WRITE, initPosition, inputBean.getDataFileCapacity());
+        return fileChannel.map(FileChannel.MapMode.READ_WRITE, initPosition, config.getDataFileCapacity());
     }
 }
