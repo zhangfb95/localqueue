@@ -21,7 +21,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 @Slf4j
 public class DefaultLocalQueue implements LocalQueue {
 
-    private static final String IDX_FILE_NAME = "localqueue_idx.db";
     private IdxFileFacade idxFileFacade;
     private Lock lock = new ReentrantReadWriteLock().writeLock();
     private RandomAccessFile writeDataAccessFile = null;
@@ -44,7 +43,7 @@ public class DefaultLocalQueue implements LocalQueue {
 
     @Override
     public void init() {
-        String idxFilePath = inputBean.getStorageDir() + File.separator + IDX_FILE_NAME;
+        String idxFilePath = inputBean.getStorageDir() + File.separator + inputBean.getIdxFileName();
         idxFileFacade = new IdxFileFacade(idxFilePath);
         context.setIdxBean(new Initializer().loadIdxBean(inputBean, idxFileFacade));
 
