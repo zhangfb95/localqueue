@@ -138,9 +138,7 @@ public class DefaultLocalQueue implements LocalQueue {
 
             // 如果读取和写入的文件是同一个，且读索引比写索引大，则认为没有下一个可读的数据
             int writeIndex = readMappedByteBuffer.getInt(8);
-            if (Objects.equals(idxFileFacade.poll().getReadDataFileIdx(),
-                               idxFileFacade.poll().getWriteDataFileIdx()) &&
-                readIndex >= writeIndex) {
+            if (isReadAndWriteTheSameFile(idxFileFacade.poll()) && readIndex >= writeIndex) {
                 return null;
             }
 
