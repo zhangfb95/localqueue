@@ -21,18 +21,17 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 @Slf4j
 public class DefaultLocalQueue implements LocalQueue {
 
-    private IdxFileFacade idxFileFacade;
     private Lock lock = new ReentrantReadWriteLock().writeLock();
+    private InputBean inputBean;
+    private IdxFileFacade idxFileFacade;
+
     private RandomAccessFile writeDataAccessFile = null;
     private FileChannel writeDataFileChannel = null;
     private MappedByteBuffer writeMappedByteBuffer;
 
-
     private RandomAccessFile readDataAccessFile = null;
     private FileChannel readDataFileChannel = null;
     private MappedByteBuffer readMappedByteBuffer;
-
-    private InputBean inputBean;
 
     public DefaultLocalQueue(InputBean inputBean) {
         this.inputBean = inputBean;
@@ -51,8 +50,7 @@ public class DefaultLocalQueue implements LocalQueue {
             boolean newCreated = FileUtil.makeFile(new File(writeDataFilePath));
             writeDataAccessFile = new RandomAccessFile(writeDataFilePath, "rwd");
             writeDataFileChannel = writeDataAccessFile.getChannel();
-            writeMappedByteBuffer = writeDataFileChannel.map(FileChannel.MapMode.READ_WRITE, 0L,
-                                                             inputBean.getDataFileCapacity());
+            writeMappedByteBuffer = generateBuffer(writeDataFileChannel);
 
             if (newCreated) {
                 offerFileCapacity();
@@ -69,21 +67,10 @@ public class DefaultLocalQueue implements LocalQueue {
             FileUtil.makeFile(new File(readDataFilePath));
             readDataAccessFile = new RandomAccessFile(readDataFilePath, "rwd");
             readDataFileChannel = readDataAccessFile.getChannel();
-            readMappedByteBuffer = readDataFileChannel.map(FileChannel.MapMode.READ_WRITE, 0L,
-                                                           inputBean.getDataFileCapacity());
+            readMappedByteBuffer = generateBuffer(readDataFileChannel);
         } catch (IOException e) {
             log.error(e.getLocalizedMessage(), e);
         }
-    }
-
-    /**
-     * 是否读写同一个文件
-     *
-     * @param idxBean 索引bean
-     * @return true：同一文件，false：不同文件
-     */
-    private boolean isReadAndWriteTheSameFile(IdxBean idxBean) {
-        return Objects.equals(idxBean.getReadDataFileIdx(), idxBean.getWriteDataFileIdx());
     }
 
     @Override public boolean offer(byte[] e) {
@@ -99,8 +86,7 @@ public class DefaultLocalQueue implements LocalQueue {
                     boolean newCreated = FileUtil.makeFile(new File(writeDataFileName));
                     writeDataAccessFile = new RandomAccessFile(writeDataFileName, "rwd");
                     writeDataFileChannel = writeDataAccessFile.getChannel();
-                    writeMappedByteBuffer = writeDataFileChannel.map(FileChannel.MapMode.READ_WRITE, 0L,
-                                                                     inputBean.getDataFileCapacity());
+                    writeMappedByteBuffer = generateBuffer(writeDataFileChannel);
                     idxFileFacade.offerWriteDataFileIdx(newWriteDataFileIdx);
                     idxFileFacade.offerWriteIdx(0);
 
@@ -152,8 +138,7 @@ public class DefaultLocalQueue implements LocalQueue {
                     String readDataFileName = generateDataFilePath(nextFileIdx);
                     readDataAccessFile = new RandomAccessFile(readDataFileName, "rwd");
                     readDataFileChannel = readDataAccessFile.getChannel();
-                    readMappedByteBuffer = readDataFileChannel.map(FileChannel.MapMode.READ_WRITE, 0L,
-                                                                   inputBean.getDataFileCapacity());
+                    readMappedByteBuffer = generateBuffer(readDataFileChannel);
                     idxFileFacade.offerReadIdx(0);
                     idxFileFacade.offerReadDataFileIdx(nextFileIdx);
                     readIndex = idxFileFacade.poll().getReadIdx();
@@ -234,6 +219,16 @@ public class DefaultLocalQueue implements LocalQueue {
     }
 
     /**
+     * 是否读写同一个文件
+     *
+     * @param idxBean 索引bean
+     * @return true：同一文件，false：不同文件
+     */
+    private boolean isReadAndWriteTheSameFile(IdxBean idxBean) {
+        return Objects.equals(idxBean.getReadDataFileIdx(), idxBean.getWriteDataFileIdx());
+    }
+
+    /**
      * 生成数据文件路径
      *
      * @param fileIdx 文件编号
@@ -242,5 +237,17 @@ public class DefaultLocalQueue implements LocalQueue {
     private String generateDataFilePath(Integer fileIdx) {
         String fileName = String.format(inputBean.getDataFileName(), fileIdx);
         return inputBean.getStorageDir() + File.separator + fileName;
+    }
+
+    /**
+     * 生成buffer
+     *
+     * @param fileChannel 文件通道
+     * @return buffer
+     * @throws IOException 可能抛出的异常
+     */
+    private MappedByteBuffer generateBuffer(FileChannel fileChannel) throws IOException {
+        final Long initPosition = 0L;
+        return fileChannel.map(FileChannel.MapMode.READ_WRITE, initPosition, inputBean.getDataFileCapacity());
     }
 }
