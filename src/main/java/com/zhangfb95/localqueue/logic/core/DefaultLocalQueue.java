@@ -58,9 +58,7 @@ public class DefaultLocalQueue implements LocalQueue {
             if (newCreated) {
                 offerFileCapacity();
                 offerNextFileIdx();
-                if (isReadAndWriteTheSameFile(idxBean)) {
-                    offerWriteIdx4New();
-                }
+                offerWriteIdx4New();
             }
 
             String readDataFilePath = generateDataFilePath(idxBean.getReadDataFileIdx());
