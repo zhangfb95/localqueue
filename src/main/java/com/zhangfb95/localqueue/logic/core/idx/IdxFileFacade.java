@@ -19,6 +19,14 @@ import static com.zhangfb95.localqueue.logic.core.idx.IdxFileStructureEnum.Write
 import static com.zhangfb95.localqueue.logic.core.idx.IdxFileStructureEnum.WriteIdx;
 
 /**
+ * 索引文件用于存储当前本地队列的进度信息，其"按照顺序"存储以下数据
+ * <ul>
+ * <li>读取文件序号，读取到哪个文件</li>
+ * <li>读取序号，读取到文件的哪个位置</li>
+ * <li>写入文件序号，写入到哪个文件</li>
+ * <li>写入序号，写入到文件的哪个位置</li>
+ * </ul>
+ *
  * @author zhangfb
  */
 @Slf4j
@@ -99,6 +107,9 @@ public class IdxFileFacade implements AutoCloseable {
         }
     }
 
+    /**
+     * 释放资源
+     */
     @Override
     public void close() {
         CloseUtil.closeQuietly(fc);
