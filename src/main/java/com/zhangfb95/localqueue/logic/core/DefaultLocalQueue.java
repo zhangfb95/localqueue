@@ -33,8 +33,6 @@ public class DefaultLocalQueue implements LocalQueue {
     private FileChannel readDataFileChannel = null;
     private MappedByteBuffer readMappedByteBuffer;
 
-    private long fileSize = 1024L * 1024L * 10L;
-
     private InputBean inputBean;
     private Context context;
 
