@@ -33,19 +33,16 @@ public class DefaultLocalQueue implements LocalQueue {
     private MappedByteBuffer readMappedByteBuffer;
 
     private InputBean inputBean;
-    private Context context;
 
     public DefaultLocalQueue(InputBean inputBean) {
         this.inputBean = inputBean;
-        context = new Context();
-        context.setInputBean(this.inputBean);
     }
 
     @Override
     public void init() {
-        String idxFilePath = generateIdxFilePath();
+        String idxFilePath = inputBean.getIdxFilePath();
         idxFileFacade = new IdxFileFacade(idxFilePath);
-        context.setIdxBean(new Initializer().loadIdxBean(inputBean, idxFileFacade));
+        new Initializer().loadIdxBean(inputBean, idxFileFacade);
 
         try {
             IdxBean idxBean = idxFileFacade.poll();
@@ -238,15 +235,6 @@ public class DefaultLocalQueue implements LocalQueue {
         } finally {
             lock.unlock();
         }
-    }
-
-    /**
-     * 生成索引文件路径
-     *
-     * @return 路径字符串
-     */
-    private String generateIdxFilePath() {
-        return inputBean.getStorageDir() + File.separator + inputBean.getIdxFileName();
     }
 
     /**
