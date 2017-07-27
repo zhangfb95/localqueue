@@ -43,15 +43,14 @@ public class DefaultLocalQueue implements LocalQueue {
 
     @Override
     public void init() {
-        String idxFilePath = inputBean.getStorageDir() + File.separator + inputBean.getIdxFileName();
+        String idxFilePath = generateIdxFilePath();
         idxFileFacade = new IdxFileFacade(idxFilePath);
         context.setIdxBean(new Initializer().loadIdxBean(inputBean, idxFileFacade));
 
         try {
             IdxBean idxBean = idxFileFacade.poll();
             if (Objects.equals(idxBean.getReadDataFileIdx(), idxBean.getWriteDataFileIdx())) {
-                String writeDataFileName = inputBean.getStorageDir() + File.separator
-                                           + "localqueue_data_" + idxBean.getWriteDataFileIdx() + ".db";
+                String writeDataFileName = generateDataFilePath(idxBean.getWriteDataFileIdx());
                 boolean newCreated = FileUtil.makeFile(new File(writeDataFileName));
                 writeDataAccessFile = new RandomAccessFile(writeDataFileName, "rwd");
                 writeDataFileChannel = writeDataAccessFile.getChannel();
@@ -68,8 +67,7 @@ public class DefaultLocalQueue implements LocalQueue {
                 readDataFileChannel = writeDataFileChannel;
                 readMappedByteBuffer = writeMappedByteBuffer;
             } else {
-                String writeDataFileName = inputBean.getStorageDir() + File.separator
-                                           + "localqueue_data_" + idxBean.getWriteDataFileIdx() + ".db";
+                String writeDataFileName = generateDataFilePath(idxBean.getWriteDataFileIdx());
                 boolean newCreated = FileUtil.makeFile(new File(writeDataFileName));
                 writeDataAccessFile = new RandomAccessFile(writeDataFileName, "rwd");
                 writeDataFileChannel = writeDataAccessFile.getChannel();
@@ -81,8 +79,7 @@ public class DefaultLocalQueue implements LocalQueue {
                     offerNextFileIdx();
                 }
 
-                String readDataFileName = inputBean.getStorageDir() + File.separator
-                                          + "localqueue_data_" + idxBean.getReadDataFileIdx() + ".db";
+                String readDataFileName = generateDataFilePath(idxBean.getReadDataFileIdx());
                 FileUtil.makeFile(new File(readDataFileName));
                 readDataAccessFile = new RandomAccessFile(readDataFileName, "rwd");
                 readDataFileChannel = readDataAccessFile.getChannel();
@@ -103,8 +100,7 @@ public class DefaultLocalQueue implements LocalQueue {
             if (writeIndex + 4 + e.length > writeMappedByteBuffer.getInt(0)) {
                 try {
                     int newWriteDataFileIdx = idxFileFacade.poll().getWriteDataFileIdx() + 1;
-                    String writeDataFileName = inputBean.getStorageDir() + File.separator
-                                               + "localqueue_data_" + newWriteDataFileIdx + ".db";
+                    String writeDataFileName = generateDataFilePath(newWriteDataFileIdx);
                     boolean newCreated = FileUtil.makeFile(new File(writeDataFileName));
                     writeDataAccessFile = new RandomAccessFile(writeDataFileName, "rwd");
                     writeDataFileChannel = writeDataAccessFile.getChannel();
@@ -160,8 +156,7 @@ public class DefaultLocalQueue implements LocalQueue {
                     CloseUtil.closeQuietly(readDataAccessFile);
 
                     int nextFileIdx = readMappedByteBuffer.getInt(4);
-                    String readDataFileName = inputBean.getStorageDir() + File.separator
-                                              + "localqueue_data_" + nextFileIdx + ".db";
+                    String readDataFileName = generateDataFilePath(nextFileIdx);
                     readDataAccessFile = new RandomAccessFile(readDataFileName, "rwd");
                     readDataFileChannel = readDataAccessFile.getChannel();
                     readMappedByteBuffer = readDataFileChannel.map(FileChannel.MapMode.READ_WRITE, 0L,
@@ -243,5 +238,25 @@ public class DefaultLocalQueue implements LocalQueue {
         } finally {
             lock.unlock();
         }
+    }
+
+    /**
+     * 生成索引文件路径
+     *
+     * @return 路径字符串
+     */
+    private String generateIdxFilePath() {
+        return inputBean.getStorageDir() + File.separator + inputBean.getIdxFileName();
+    }
+
+    /**
+     * 生成数据文件路径
+     *
+     * @param fileIdx 文件编号
+     * @return 路径字符串
+     */
+    private String generateDataFilePath(Integer fileIdx) {
+        String fileName = String.format(inputBean.getDataFileName(), fileIdx);
+        return inputBean.getStorageDir() + File.separator + fileName;
     }
 }
