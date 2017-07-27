@@ -14,14 +14,15 @@ public class LocalQueueTest {
     public void test() throws Exception {
         InputBean inputBean = new InputBean();
         inputBean.setDataFileCapacity(1024);
-        inputBean.setStorageDir("/Users/pro/ws/learn/localqueue/src/main/resources");
+        inputBean.setStorageDir("/Users/pro/tmp/localqueue");
         LocalQueue localQueue = new DefaultLocalQueue(inputBean);
 
         try {
             localQueue.init();
             for (int i = 0; i < 2000; i++) {
-                System.out.println("id = " + i);
-                localQueue.offer(("nimei张付兵-newold" + i).getBytes("utf-8"));
+                String value = "nimei张付兵-newold" + i;
+                System.out.println(value);
+                localQueue.offer((value).getBytes("utf-8"));
             }
 
             /*localQueue.offer("nimei张付兵888".getBytes("utf-8"));
@@ -36,15 +37,15 @@ public class LocalQueueTest {
     public void test2() throws Exception {
         InputBean inputBean = new InputBean();
         inputBean.setDataFileCapacity(1024 * 1024);
-        inputBean.setStorageDir("/Users/pro/ws/learn/localqueue/src/main/resources");
+        inputBean.setStorageDir("/Users/pro/tmp/localqueue");
         LocalQueue localQueue = new DefaultLocalQueue(inputBean);
 
         try {
             localQueue.init();
-            for (int i = 0; i < 200; i++) {
+            for (int i = 0; i < 2100; i++) {
                 byte[] data = localQueue.poll();
                 if (data != null) {
-                    System.out.println(new String(data, "utf-8"));
+                    System.out.println(i + ":" + new String(data, "utf-8"));
                 } else {
                     System.out.println("end!");
                     break;

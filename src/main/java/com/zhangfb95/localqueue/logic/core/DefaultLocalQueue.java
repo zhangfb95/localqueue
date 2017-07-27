@@ -64,6 +64,7 @@ public class DefaultLocalQueue implements LocalQueue {
                 if (newCreated) {
                     offerFileCapacity();
                     offerNextFileIdx();
+                    offerWriteIdx4New();
                 }
 
                 readDataAccessFile = writeDataAccessFile;
@@ -118,6 +119,7 @@ public class DefaultLocalQueue implements LocalQueue {
                     if (newCreated) {
                         offerFileCapacity();
                         offerNextFileIdx();
+                        offerWriteIdx4New();
                     }
                     writeIndex = idxFileFacade.poll().getWriteIdx();
                 } catch (IOException e1) {
@@ -129,6 +131,7 @@ public class DefaultLocalQueue implements LocalQueue {
             writeMappedByteBuffer.putInt(e.length);
             writeMappedByteBuffer.put(e);
             idxFileFacade.offerWriteIdx(writeIndex + 4 + e.length);
+            offerWriteIdx();
             return true;
         } finally {
             lock.unlock();
@@ -140,13 +143,21 @@ public class DefaultLocalQueue implements LocalQueue {
         try {
             int readIndex = idxFileFacade.poll().getReadIdx();
             if (readIndex == 0) {
-                readIndex += 8;
+                readIndex += 12;
             }
 
             int length = readMappedByteBuffer.getInt(readIndex);
 
+            // 如果读取和写入的文件是同一个，且读索引比写索引大，则认为没有下一个可读的数据
+            int writeIndex = readMappedByteBuffer.getInt(8);
+            if (Objects.equals(idxFileFacade.poll().getReadDataFileIdx(),
+                               idxFileFacade.poll().getWriteDataFileIdx()) &&
+                readIndex >= writeIndex) {
+                return null;
+            }
+
             // 如果超过文件的容量，则需要另外开启一个文件
-            if (readIndex + length + 4 > readMappedByteBuffer.getInt(0)) {
+            if (readIndex + length + 4 > readMappedByteBuffer.getInt(8)) {
                 try {
                     CloseUtil.closeQuietly(readDataFileChannel);
                     CloseUtil.closeQuietly(readDataAccessFile);
@@ -160,23 +171,15 @@ public class DefaultLocalQueue implements LocalQueue {
                                                                    inputBean.getDataFileCapacity());
                     idxFileFacade.offerReadIdx(0);
                     idxFileFacade.offerReadDataFileIdx(nextFileIdx);
+                    readIndex = idxFileFacade.poll().getReadIdx();
                 } catch (IOException e) {
                     log.error(e.getLocalizedMessage(), e);
                 }
             }
 
-            // 如果读取和写入的文件是同一个，且读索引比写索引大，则认为没有下一个可读的数据
-            int writeIndex = idxFileFacade.poll().getWriteIdx();
-            if (Objects.equals(idxFileFacade.poll().getReadDataFileIdx(),
-                               idxFileFacade.poll().getWriteDataFileIdx()) &&
-                readIndex >= writeIndex) {
-                return null;
-            }
-
             // 重新载入读索引和数据长度
-            readIndex = idxFileFacade.poll().getReadIdx();
             if (readIndex == 0) {
-                readIndex += 8;
+                readIndex += 12;
             }
             length = readMappedByteBuffer.getInt(readIndex);
 
@@ -217,6 +220,28 @@ public class DefaultLocalQueue implements LocalQueue {
             int writeIndex = idxFileFacade.poll().getWriteIdx();
             writeMappedByteBuffer.position(4);
             writeMappedByteBuffer.putInt(idxFileFacade.poll().getWriteDataFileIdx() + 1);
+            idxFileFacade.offerWriteIdx(writeIndex + 4);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private void offerWriteIdx() {
+        lock.lock();
+        try {
+            int writeIndex = idxFileFacade.poll().getWriteIdx();
+            writeMappedByteBuffer.position(8);
+            writeMappedByteBuffer.putInt(writeIndex);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private void offerWriteIdx4New() {
+        lock.lock();
+        try {
+            offerWriteIdx();
+            int writeIndex = idxFileFacade.poll().getWriteIdx();
             idxFileFacade.offerWriteIdx(writeIndex + 4);
         } finally {
             lock.unlock();
