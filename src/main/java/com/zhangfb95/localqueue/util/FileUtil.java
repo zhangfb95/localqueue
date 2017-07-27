@@ -25,4 +25,22 @@ public class FileUtil {
         }
         return true;
     }
+
+    public static void makeDir(File file) {
+        if (file.exists()) {
+            return;
+        }
+
+        boolean flag;
+        if (file.getParentFile().exists()) {
+            flag = file.mkdir();
+        } else {
+            makeDir(file.getParentFile());
+            flag = file.mkdir();
+        }
+
+        if (!flag) {
+            log.error("directory create error for, " + file.getAbsolutePath());
+        }
+    }
 }
