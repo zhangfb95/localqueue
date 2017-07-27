@@ -55,10 +55,7 @@ public class DefaultLocalQueue implements LocalQueue {
             if (newCreated) {
                 offerFileCapacity();
                 offerNextFileIdx();
-            }
-
-            if (isReadAndWriteTheSameFile(idxBean)) {
-                if (newCreated) {
+                if (isReadAndWriteTheSameFile(idxBean)) {
                     offerWriteIdx4New();
                 }
             }
