@@ -40,9 +40,10 @@ public class DefaultLocalQueue implements LocalQueue {
 
     @Override
     public void init() {
-        String idxFilePath = inputBean.getIdxFilePath();
-        idxFileFacade = new IdxFileFacade(idxFilePath);
-        new Initializer().loadIdxBean(inputBean, idxFileFacade);
+        FileUtil.makeDir(new File(inputBean.getStorageDir()));
+        FileUtil.makeFile(new File(inputBean.getIdxFilePath()));
+        idxFileFacade = new IdxFileFacade(inputBean.getIdxFilePath());
+        idxFileFacade.init();
 
         try {
             IdxBean idxBean = idxFileFacade.poll();
