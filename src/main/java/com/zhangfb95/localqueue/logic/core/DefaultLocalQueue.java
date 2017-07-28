@@ -2,6 +2,7 @@ package com.zhangfb95.localqueue.logic.core;
 
 import com.zhangfb95.localqueue.logic.bean.Config;
 import com.zhangfb95.localqueue.logic.bean.IdxBean;
+import com.zhangfb95.localqueue.logic.core.data.DataFileStructureEnum;
 import com.zhangfb95.localqueue.logic.core.idx.IdxFileFacade;
 import com.zhangfb95.localqueue.util.CloseUtil;
 import com.zhangfb95.localqueue.util.FileUtil;
@@ -113,34 +114,29 @@ public class DefaultLocalQueue implements LocalQueue {
     @Override public byte[] poll() {
         lock.lock();
         try {
-            int readIndex = idxFileFacade.poll().getReadIdx();
-            int length = readMappedByteBuffer.getInt(readIndex);
-
             // 如果读取和写入的文件是同一个，且读索引比写索引大，则认为没有下一个可读的数据
-            int writeIndex = readMappedByteBuffer.getInt(8);
-            if (isReadAndWriteTheSameFile(idxFileFacade.poll()) && readIndex >= writeIndex) {
+            if (haveReadAllFile()) {
                 return null;
             }
 
             // 如果超过文件的容量，则需要另外开启一个文件
-            if (readIndex + length + Integer.BYTES > readMappedByteBuffer.getInt(8)) {
+            if (isCrossWriteCapacity()) {
                 try {
-                    CloseUtil.closeQuietly(readDataFileChannel);
-                    CloseUtil.closeQuietly(readDataAccessFile);
+                    closeReadFile();
 
-                    int nextFileIdx = readMappedByteBuffer.getInt(4);
-                    String readDataFileName = generateDataFilePath(nextFileIdx);
-                    readDataAccessFile = new RandomAccessFile(readDataFileName, "rwd");
+                    int nextFileIdx = readMappedByteBuffer.getInt(DataFileStructureEnum.NextFileIdx.getPos());
+                    String readDataFilePath = generateDataFilePath(nextFileIdx);
+                    readDataAccessFile = new RandomAccessFile(readDataFilePath, "rwd");
                     readDataFileChannel = readDataAccessFile.getChannel();
                     readMappedByteBuffer = generateBuffer(readDataFileChannel);
                     idxFileFacade.readNewFile(nextFileIdx);
-                    readIndex = idxFileFacade.poll().getReadIdx();
                 } catch (IOException e) {
                     log.error(e.getLocalizedMessage(), e);
                 }
             }
 
-            length = readMappedByteBuffer.getInt(readIndex);
+            int readIndex = idxFileFacade.poll().getReadIdx();
+            int length = readMappedByteBuffer.getInt(readIndex);
             byte[] data = readData(readIndex, length);
             idxFileFacade.offerReadIdx(readIndex + Integer.BYTES + length);
             return data;
@@ -149,12 +145,32 @@ public class DefaultLocalQueue implements LocalQueue {
         }
     }
 
+    /**
+     * 读索引超过了写入的容量
+     *
+     * @return true：读取到了文件尽头，false：还有数据可读
+     */
+    private boolean isCrossWriteCapacity() {
+        int readIndex = idxFileFacade.poll().getReadIdx();
+        int writeCapacity = readMappedByteBuffer.getInt(DataFileStructureEnum.WriteIdx.getPos());
+        return readIndex >= writeCapacity;
+    }
+
+    private boolean haveReadAllFile() {
+        return isReadAndWriteTheSameFile(idxFileFacade.poll()) && isCrossWriteCapacity();
+    }
+
     @Override public void close() {
         CloseUtil.closeQuietly(writeDataFileChannel);
         CloseUtil.closeQuietly(writeDataAccessFile);
         CloseUtil.closeQuietly(readDataFileChannel);
         CloseUtil.closeQuietly(readDataAccessFile);
         idxFileFacade.close();
+    }
+
+    private void closeReadFile() {
+        CloseUtil.closeQuietly(readDataFileChannel);
+        CloseUtil.closeQuietly(readDataAccessFile);
     }
 
     private void offerWriteIdxInDataFile() {
