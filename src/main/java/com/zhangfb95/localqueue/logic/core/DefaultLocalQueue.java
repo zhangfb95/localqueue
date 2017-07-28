@@ -17,10 +17,6 @@ import java.util.Objects;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import static com.zhangfb95.localqueue.logic.core.data.DataFileStructureEnum.FileCapacity;
-import static com.zhangfb95.localqueue.logic.core.data.DataFileStructureEnum.NextFileIdx;
-import static com.zhangfb95.localqueue.logic.core.data.DataFileStructureEnum.WriteIdx;
-
 /**
  * @author zhangfb
  */
@@ -63,7 +59,8 @@ public class DefaultLocalQueue implements LocalQueue {
             int writeIndex = idxFileFacade.poll().getWriteIdx();
 
             // 如果超过文件的容量，则需要另外开启一个文件
-            if (writeIndex + Integer.BYTES + e.length > writeMappedByteBuffer.getInt(0)) {
+            if (writeIndex + Integer.BYTES + e.length >
+                writeMappedByteBuffer.getInt(DataFileStructureEnum.FileCapacity.getPos())) {
                 try {
                     int newWriteDataFileIdx = idxFileFacade.poll().getWriteDataFileIdx() + 1;
                     generateWriteDataResource(newWriteDataFileIdx);
@@ -171,9 +168,8 @@ public class DefaultLocalQueue implements LocalQueue {
     private void offerWriteIdxInDataFile() {
         lock.lock();
         try {
-            writeMappedByteBuffer.position(WriteIdx.getPos());
-            int writeIndex = idxFileFacade.poll().getWriteIdx();
-            writeMappedByteBuffer.putInt(writeIndex);
+            writeMappedByteBuffer.position(DataFileStructureEnum.WriteIdx.getPos());
+            writeMappedByteBuffer.putInt(idxFileFacade.poll().getWriteIdx());
         } finally {
             lock.unlock();
         }
@@ -182,7 +178,7 @@ public class DefaultLocalQueue implements LocalQueue {
     private void initOfferFileCapacity() {
         lock.lock();
         try {
-            writeMappedByteBuffer.position(FileCapacity.getPos());
+            writeMappedByteBuffer.position(DataFileStructureEnum.FileCapacity.getPos());
             writeMappedByteBuffer.putInt(config.getDataFileCapacity());
         } finally {
             lock.unlock();
@@ -192,7 +188,7 @@ public class DefaultLocalQueue implements LocalQueue {
     private void initOfferNextFileIdx() {
         lock.lock();
         try {
-            writeMappedByteBuffer.position(NextFileIdx.getPos());
+            writeMappedByteBuffer.position(DataFileStructureEnum.NextFileIdx.getPos());
             writeMappedByteBuffer.putInt(idxFileFacade.poll().getWriteDataFileIdx() + 1);
         } finally {
             lock.unlock();
@@ -200,13 +196,7 @@ public class DefaultLocalQueue implements LocalQueue {
     }
 
     private void initOfferWriteIdx() {
-        lock.lock();
-        try {
-            writeMappedByteBuffer.position(WriteIdx.getPos());
-            writeMappedByteBuffer.putInt(idxFileFacade.poll().getWriteIdx());
-        } finally {
-            lock.unlock();
-        }
+        offerWriteIdxInDataFile();
     }
 
     /**
