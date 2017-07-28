@@ -109,6 +109,14 @@ public class DefaultLocalQueue implements LocalQueue {
         }
     }
 
+    @Override public void close() {
+        CloseUtil.closeQuietly(writeDataFileChannel);
+        CloseUtil.closeQuietly(writeDataAccessFile);
+        CloseUtil.closeQuietly(readDataFileChannel);
+        CloseUtil.closeQuietly(readDataAccessFile);
+        idxFileFacade.close();
+    }
+
     private void generateWriteDataResource(int writeDataFileIdx) throws IOException {
         String writeDataFilePath = generateDataFilePath(writeDataFileIdx);
         boolean newCreated = FileUtil.makeFile(writeDataFilePath);
@@ -148,14 +156,6 @@ public class DefaultLocalQueue implements LocalQueue {
 
     private boolean haveReadAllFile() {
         return isReadAndWriteTheSameFile() && isCrossWriteCapacity();
-    }
-
-    @Override public void close() {
-        CloseUtil.closeQuietly(writeDataFileChannel);
-        CloseUtil.closeQuietly(writeDataAccessFile);
-        CloseUtil.closeQuietly(readDataFileChannel);
-        CloseUtil.closeQuietly(readDataAccessFile);
-        idxFileFacade.close();
     }
 
     private void closeReadFile() {
