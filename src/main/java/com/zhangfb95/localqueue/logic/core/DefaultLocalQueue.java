@@ -141,12 +141,8 @@ public class DefaultLocalQueue implements LocalQueue {
             }
 
             length = readMappedByteBuffer.getInt(readIndex);
-
-            byte[] data = new byte[length];
-            for (int i = 0; i < length; i++) {
-                data[i] = readMappedByteBuffer.get(readIndex + Integer.BYTES + i);
-            }
-            idxFileFacade.offerReadIdx(readIndex + length + Integer.BYTES);
+            byte[] data = readData(readIndex, length);
+            idxFileFacade.offerReadIdx(readIndex + Integer.BYTES + length);
             return data;
         } finally {
             lock.unlock();
@@ -206,6 +202,21 @@ public class DefaultLocalQueue implements LocalQueue {
         } finally {
             lock.unlock();
         }
+    }
+
+    /**
+     * 读取内容数据
+     *
+     * @param readIndex 读索引
+     * @param length    内容数据长度
+     * @return 内容数据
+     */
+    private byte[] readData(int readIndex, int length) {
+        byte[] data = new byte[length];
+        for (int i = 0; i < length; i++) {
+            data[i] = readMappedByteBuffer.get(readIndex + Integer.BYTES + i);
+        }
+        return data;
     }
 
     /**
