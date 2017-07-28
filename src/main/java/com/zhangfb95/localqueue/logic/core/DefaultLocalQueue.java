@@ -1,7 +1,6 @@
 package com.zhangfb95.localqueue.logic.core;
 
 import com.zhangfb95.localqueue.logic.bean.Config;
-import com.zhangfb95.localqueue.logic.bean.IdxBean;
 import com.zhangfb95.localqueue.logic.core.data.DataFileStructureEnum;
 import com.zhangfb95.localqueue.logic.core.idx.IdxFileFacade;
 import com.zhangfb95.localqueue.util.CloseUtil;
@@ -45,9 +44,8 @@ public class DefaultLocalQueue implements LocalQueue {
         idxFileFacade.init();
 
         try {
-            IdxBean idxBean = idxFileFacade.poll();
-            generateWriteDataResource(idxBean.getWriteDataFileIdx());
-            generateReadDataResource(idxBean.getReadDataFileIdx());
+            generateWriteDataResource(idxFileFacade.pollWriteDataFileIdx());
+            generateReadDataResource(idxFileFacade.pollReadDataFileIdx());
         } catch (IOException e) {
             log.error(e.getLocalizedMessage(), e);
         }
@@ -56,15 +54,15 @@ public class DefaultLocalQueue implements LocalQueue {
     @Override public boolean offer(byte[] e) {
         lock.lock();
         try {
-            int writeIndex = idxFileFacade.poll().getWriteIdx();
+            int writeIndex = idxFileFacade.pollWriteIdx();
 
             // 如果超过文件的容量，则需要另外开启一个文件
             if (writeIndex + Integer.BYTES + e.length >
                 writeMappedByteBuffer.getInt(DataFileStructureEnum.FileCapacity.getPos())) {
                 try {
-                    int newWriteDataFileIdx = idxFileFacade.poll().getWriteDataFileIdx() + 1;
+                    int newWriteDataFileIdx = idxFileFacade.pollWriteDataFileIdx() + 1;
                     generateWriteDataResource(newWriteDataFileIdx);
-                    writeIndex = idxFileFacade.poll().getWriteIdx();
+                    writeIndex = idxFileFacade.pollWriteIdx();
                 } catch (IOException e1) {
                     log.error(e1.getLocalizedMessage(), e);
                 }
@@ -101,7 +99,7 @@ public class DefaultLocalQueue implements LocalQueue {
                 }
             }
 
-            int readIndex = idxFileFacade.poll().getReadIdx();
+            int readIndex = idxFileFacade.pollReadIdx();
             int length = readMappedByteBuffer.getInt(readIndex);
             byte[] data = readData(readIndex, length);
             idxFileFacade.offerReadIdx(readIndex + Integer.BYTES + length);
@@ -143,13 +141,13 @@ public class DefaultLocalQueue implements LocalQueue {
      * @return true：读取到了文件尽头，false：还有数据可读
      */
     private boolean isCrossWriteCapacity() {
-        int readIndex = idxFileFacade.poll().getReadIdx();
+        int readIndex = idxFileFacade.pollReadIdx();
         int writeCapacity = readMappedByteBuffer.getInt(DataFileStructureEnum.WriteIdx.getPos());
         return readIndex >= writeCapacity;
     }
 
     private boolean haveReadAllFile() {
-        return isReadAndWriteTheSameFile(idxFileFacade.poll()) && isCrossWriteCapacity();
+        return isReadAndWriteTheSameFile() && isCrossWriteCapacity();
     }
 
     @Override public void close() {
@@ -169,7 +167,7 @@ public class DefaultLocalQueue implements LocalQueue {
         lock.lock();
         try {
             writeMappedByteBuffer.position(DataFileStructureEnum.WriteIdx.getPos());
-            writeMappedByteBuffer.putInt(idxFileFacade.poll().getWriteIdx());
+            writeMappedByteBuffer.putInt(idxFileFacade.pollWriteIdx());
         } finally {
             lock.unlock();
         }
@@ -189,7 +187,7 @@ public class DefaultLocalQueue implements LocalQueue {
         lock.lock();
         try {
             writeMappedByteBuffer.position(DataFileStructureEnum.NextFileIdx.getPos());
-            writeMappedByteBuffer.putInt(idxFileFacade.poll().getWriteDataFileIdx() + 1);
+            writeMappedByteBuffer.putInt(idxFileFacade.pollWriteDataFileIdx() + 1);
         } finally {
             lock.unlock();
         }
@@ -217,11 +215,10 @@ public class DefaultLocalQueue implements LocalQueue {
     /**
      * 是否读写同一个文件
      *
-     * @param idxBean 索引bean
      * @return true：同一文件，false：不同文件
      */
-    private boolean isReadAndWriteTheSameFile(IdxBean idxBean) {
-        return Objects.equals(idxBean.getReadDataFileIdx(), idxBean.getWriteDataFileIdx());
+    private boolean isReadAndWriteTheSameFile() {
+        return Objects.equals(idxFileFacade.pollReadDataFileIdx(), idxFileFacade.pollWriteDataFileIdx());
     }
 
     /**

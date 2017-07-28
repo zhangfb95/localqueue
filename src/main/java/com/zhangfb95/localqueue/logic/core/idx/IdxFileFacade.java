@@ -71,6 +71,42 @@ public class IdxFileFacade implements AutoCloseable {
         }
     }
 
+    public Integer pollReadDataFileIdx() {
+        lock.lock();
+        try {
+            return get(ReadDataFileIdx);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public Integer pollReadIdx() {
+        lock.lock();
+        try {
+            return get(ReadIdx);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public Integer pollWriteDataFileIdx() {
+        lock.lock();
+        try {
+            return get(WriteDataFileIdx);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public Integer pollWriteIdx() {
+        lock.lock();
+        try {
+            return get(WriteIdx);
+        } finally {
+            lock.unlock();
+        }
+    }
+
     public void offerReadDataFileIdx(Integer value) {
         lock.lock();
         try {
