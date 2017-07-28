@@ -1,6 +1,7 @@
 package com.zhangfb95.localqueue.logic.core.idx;
 
 import com.zhangfb95.localqueue.logic.bean.IdxBean;
+import com.zhangfb95.localqueue.logic.core.data.DataFileStructureEnum;
 import com.zhangfb95.localqueue.util.CloseUtil;
 import com.zhangfb95.localqueue.util.FileUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -107,6 +108,16 @@ public class IdxFileFacade implements AutoCloseable {
         }
     }
 
+    public void readNewFile(int nextFileIdx) {
+        lock.lock();
+        try {
+            offerReadDataFileIdx(nextFileIdx);
+            offerReadIdx(DataFileStructureEnum.totalBytes());
+        } finally {
+            lock.unlock();
+        }
+    }
+
     /**
      * 释放资源
      */
@@ -122,7 +133,7 @@ public class IdxFileFacade implements AutoCloseable {
     private void initData() {
         final int defaultValue = 0;
         offerReadDataFileIdx(defaultValue);
-        offerReadIdx(defaultValue);
+        offerReadIdx(DataFileStructureEnum.totalBytes());
         offerWriteDataFileIdx(defaultValue);
         offerWriteIdx(defaultValue);
     }

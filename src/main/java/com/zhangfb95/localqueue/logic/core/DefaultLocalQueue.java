@@ -114,10 +114,6 @@ public class DefaultLocalQueue implements LocalQueue {
         lock.lock();
         try {
             int readIndex = idxFileFacade.poll().getReadIdx();
-            if (readIndex == 0) {
-                readIndex += 12;
-            }
-
             int length = readMappedByteBuffer.getInt(readIndex);
 
             // 如果读取和写入的文件是同一个，且读索引比写索引大，则认为没有下一个可读的数据
@@ -137,18 +133,13 @@ public class DefaultLocalQueue implements LocalQueue {
                     readDataAccessFile = new RandomAccessFile(readDataFileName, "rwd");
                     readDataFileChannel = readDataAccessFile.getChannel();
                     readMappedByteBuffer = generateBuffer(readDataFileChannel);
-                    idxFileFacade.offerReadIdx(0);
-                    idxFileFacade.offerReadDataFileIdx(nextFileIdx);
+                    idxFileFacade.readNewFile(nextFileIdx);
                     readIndex = idxFileFacade.poll().getReadIdx();
                 } catch (IOException e) {
                     log.error(e.getLocalizedMessage(), e);
                 }
             }
 
-            // 重新载入读索引和数据长度
-            if (readIndex == 0) {
-                readIndex += 12;
-            }
             length = readMappedByteBuffer.getInt(readIndex);
 
             byte[] data = new byte[length];
