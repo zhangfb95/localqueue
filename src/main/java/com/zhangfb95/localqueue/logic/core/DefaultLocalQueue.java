@@ -50,18 +50,7 @@ public class DefaultLocalQueue implements LocalQueue {
 
         try {
             IdxBean idxBean = idxFileFacade.poll();
-            String writeDataFilePath = generateDataFilePath(idxBean.getWriteDataFileIdx());
-            boolean newCreated = FileUtil.makeFile(new File(writeDataFilePath));
-            writeDataAccessFile = new RandomAccessFile(writeDataFilePath, "rwd");
-            writeDataFileChannel = writeDataAccessFile.getChannel();
-            writeMappedByteBuffer = generateBuffer(writeDataFileChannel);
-
-            if (newCreated) {
-                initOfferFileCapacity();
-                initOfferNextFileIdx();
-                initOfferWriteIdx();
-            }
-
+            generateWriteDataResource(idxBean.getWriteDataFileIdx());
             generateReadDataResource(idxBean.getReadDataFileIdx());
         } catch (IOException e) {
             log.error(e.getLocalizedMessage(), e);
@@ -77,19 +66,7 @@ public class DefaultLocalQueue implements LocalQueue {
             if (writeIndex + Integer.BYTES + e.length > writeMappedByteBuffer.getInt(0)) {
                 try {
                     int newWriteDataFileIdx = idxFileFacade.poll().getWriteDataFileIdx() + 1;
-                    String writeDataFileName = generateDataFilePath(newWriteDataFileIdx);
-                    boolean newCreated = FileUtil.makeFile(new File(writeDataFileName));
-                    writeDataAccessFile = new RandomAccessFile(writeDataFileName, "rwd");
-                    writeDataFileChannel = writeDataAccessFile.getChannel();
-                    writeMappedByteBuffer = generateBuffer(writeDataFileChannel);
-                    idxFileFacade.offerWriteDataFileIdx(newWriteDataFileIdx);
-                    idxFileFacade.offerWriteIdx(0);
-
-                    if (newCreated) {
-                        initOfferFileCapacity();
-                        initOfferNextFileIdx();
-                        initOfferWriteIdx();
-                    }
+                    generateWriteDataResource(newWriteDataFileIdx);
                     writeIndex = idxFileFacade.poll().getWriteIdx();
                 } catch (IOException e1) {
                     log.error(e1.getLocalizedMessage(), e);
@@ -134,6 +111,21 @@ public class DefaultLocalQueue implements LocalQueue {
             return data;
         } finally {
             lock.unlock();
+        }
+    }
+
+    private void generateWriteDataResource(int writeDataFileIdx) throws IOException {
+        String writeDataFilePath = generateDataFilePath(writeDataFileIdx);
+        boolean newCreated = FileUtil.makeFile(new File(writeDataFilePath));
+        writeDataAccessFile = new RandomAccessFile(writeDataFilePath, "rwd");
+        writeDataFileChannel = writeDataAccessFile.getChannel();
+        writeMappedByteBuffer = generateBuffer(writeDataFileChannel);
+
+        if (newCreated) {
+            idxFileFacade.resetNewFileWriteIdx(writeDataFileIdx);
+            initOfferFileCapacity();
+            initOfferNextFileIdx();
+            initOfferWriteIdx();
         }
     }
 
@@ -192,8 +184,6 @@ public class DefaultLocalQueue implements LocalQueue {
         try {
             writeMappedByteBuffer.position(FileCapacity.getPos());
             writeMappedByteBuffer.putInt(config.getDataFileCapacity());
-            int writeIndex = idxFileFacade.poll().getWriteIdx();
-            idxFileFacade.offerWriteIdx(writeIndex + FileCapacity.getLength());
         } finally {
             lock.unlock();
         }
@@ -204,8 +194,6 @@ public class DefaultLocalQueue implements LocalQueue {
         try {
             writeMappedByteBuffer.position(NextFileIdx.getPos());
             writeMappedByteBuffer.putInt(idxFileFacade.poll().getWriteDataFileIdx() + 1);
-            int writeIndex = idxFileFacade.poll().getWriteIdx();
-            idxFileFacade.offerWriteIdx(writeIndex + NextFileIdx.getLength());
         } finally {
             lock.unlock();
         }
@@ -215,9 +203,7 @@ public class DefaultLocalQueue implements LocalQueue {
         lock.lock();
         try {
             writeMappedByteBuffer.position(WriteIdx.getPos());
-            int writeIndex = idxFileFacade.poll().getWriteIdx();
-            writeMappedByteBuffer.putInt(writeIndex);
-            idxFileFacade.offerWriteIdx(writeIndex + WriteIdx.getLength());
+            writeMappedByteBuffer.putInt(idxFileFacade.poll().getWriteIdx());
         } finally {
             lock.unlock();
         }

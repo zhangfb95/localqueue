@@ -124,6 +124,21 @@ public class IdxFileFacade implements AutoCloseable {
     }
 
     /**
+     * 重置新文件写序号，包括文件序号，写入序号
+     *
+     * @param nextFileIdx 下一文件序号
+     */
+    public void resetNewFileWriteIdx(int nextFileIdx) {
+        lock.lock();
+        try {
+            offerWriteDataFileIdx(nextFileIdx);
+            offerWriteIdx(DataFileStructureEnum.totalBytes());
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    /**
      * 释放资源
      */
     @Override
