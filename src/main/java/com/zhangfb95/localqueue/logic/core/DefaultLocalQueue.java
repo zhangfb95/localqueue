@@ -62,11 +62,7 @@ public class DefaultLocalQueue implements LocalQueue {
                 initOfferWriteIdx();
             }
 
-            String readDataFilePath = generateDataFilePath(idxBean.getReadDataFileIdx());
-            FileUtil.makeFile(new File(readDataFilePath));
-            readDataAccessFile = new RandomAccessFile(readDataFilePath, "rwd");
-            readDataFileChannel = readDataAccessFile.getChannel();
-            readMappedByteBuffer = generateBuffer(readDataFileChannel);
+            generateReadDataResource(idxBean.getReadDataFileIdx());
         } catch (IOException e) {
             log.error(e.getLocalizedMessage(), e);
         }
@@ -123,13 +119,9 @@ public class DefaultLocalQueue implements LocalQueue {
             if (isCrossWriteCapacity()) {
                 try {
                     closeReadFile();
-
-                    int nextFileIdx = readMappedByteBuffer.getInt(DataFileStructureEnum.NextFileIdx.getPos());
-                    String readDataFilePath = generateDataFilePath(nextFileIdx);
-                    readDataAccessFile = new RandomAccessFile(readDataFilePath, "rwd");
-                    readDataFileChannel = readDataAccessFile.getChannel();
-                    readMappedByteBuffer = generateBuffer(readDataFileChannel);
-                    idxFileFacade.readNewFile(nextFileIdx);
+                    int nextFileIdx = getNextFileIdx();
+                    generateReadDataResource(nextFileIdx);
+                    idxFileFacade.resetNewFileReadIdx(nextFileIdx);
                 } catch (IOException e) {
                     log.error(e.getLocalizedMessage(), e);
                 }
@@ -143,6 +135,17 @@ public class DefaultLocalQueue implements LocalQueue {
         } finally {
             lock.unlock();
         }
+    }
+
+    private void generateReadDataResource(int fileIdx) throws IOException {
+        String readDataFilePath = generateDataFilePath(fileIdx);
+        readDataAccessFile = new RandomAccessFile(readDataFilePath, "rwd");
+        readDataFileChannel = readDataAccessFile.getChannel();
+        readMappedByteBuffer = generateBuffer(readDataFileChannel);
+    }
+
+    private int getNextFileIdx() {
+        return readMappedByteBuffer.getInt(DataFileStructureEnum.NextFileIdx.getPos());
     }
 
     /**

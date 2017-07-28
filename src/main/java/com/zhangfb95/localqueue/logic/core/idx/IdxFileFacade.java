@@ -108,7 +108,12 @@ public class IdxFileFacade implements AutoCloseable {
         }
     }
 
-    public void readNewFile(int nextFileIdx) {
+    /**
+     * 重置新文件读序号，包括文件序号，读取序号
+     *
+     * @param nextFileIdx 下一文件序号
+     */
+    public void resetNewFileReadIdx(int nextFileIdx) {
         lock.lock();
         try {
             offerReadDataFileIdx(nextFileIdx);
