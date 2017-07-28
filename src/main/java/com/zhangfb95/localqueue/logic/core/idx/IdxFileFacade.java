@@ -6,7 +6,6 @@ import com.zhangfb95.localqueue.util.CloseUtil;
 import com.zhangfb95.localqueue.util.FileUtil;
 import lombok.extern.slf4j.Slf4j;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.MappedByteBuffer;
@@ -46,7 +45,7 @@ public class IdxFileFacade implements AutoCloseable {
 
     public void init() {
         try {
-            boolean newCreated = FileUtil.makeFile(new File(filePath));
+            boolean newCreated = FileUtil.makeFile(filePath);
             file = new RandomAccessFile(filePath, "rwd");
             fc = file.getChannel();
             mappedByteBuffer = fc.map(FileChannel.MapMode.READ_WRITE, 0L, 1024L * 1024L * 10L);

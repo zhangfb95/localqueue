@@ -40,7 +40,7 @@ public class DefaultLocalQueue implements LocalQueue {
     }
 
     @Override public void init() {
-        FileUtil.makeDir(new File(config.getStorageDir()));
+        FileUtil.makeDir(config.getStorageDir());
         idxFileFacade = new IdxFileFacade(config.getIdxFilePath());
         idxFileFacade.init();
 
@@ -113,7 +113,7 @@ public class DefaultLocalQueue implements LocalQueue {
 
     private void generateWriteDataResource(int writeDataFileIdx) throws IOException {
         String writeDataFilePath = generateDataFilePath(writeDataFileIdx);
-        boolean newCreated = FileUtil.makeFile(new File(writeDataFilePath));
+        boolean newCreated = FileUtil.makeFile(writeDataFilePath);
         writeDataAccessFile = new RandomAccessFile(writeDataFilePath, "rwd");
         writeDataFileChannel = writeDataAccessFile.getChannel();
         writeMappedByteBuffer = generateBuffer(writeDataFileChannel);

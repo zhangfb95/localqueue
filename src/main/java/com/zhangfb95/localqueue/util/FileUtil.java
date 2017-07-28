@@ -11,7 +11,8 @@ import java.io.IOException;
 @Slf4j
 public class FileUtil {
 
-    public static boolean makeFile(File file) {
+    public static boolean makeFile(String filePath) {
+        File file = new File(filePath);
         if (file.exists()) {
             return false;
         }
@@ -24,6 +25,10 @@ public class FileUtil {
             log.error("file create error, " + e.getLocalizedMessage(), e);
         }
         return true;
+    }
+
+    public static void makeDir(String filePath) {
+        makeDir(new File(filePath));
     }
 
     public static void makeDir(File file) {
