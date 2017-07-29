@@ -1,17 +1,12 @@
 package com.zhangfb95.localqueue.logic.core;
 
 import com.zhangfb95.localqueue.logic.bean.Config;
-import com.zhangfb95.localqueue.logic.core.data.DataFileStructureEnum;
+import com.zhangfb95.localqueue.logic.core.data.DataFileFacade;
 import com.zhangfb95.localqueue.logic.core.idx.IdxFileFacade;
-import com.zhangfb95.localqueue.util.CloseUtil;
 import com.zhangfb95.localqueue.util.FileUtil;
 import lombok.extern.slf4j.Slf4j;
 
-import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.nio.MappedByteBuffer;
-import java.nio.channels.FileChannel;
 import java.util.Objects;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -25,14 +20,7 @@ public class DefaultLocalQueue implements LocalQueue {
     private Lock lock = new ReentrantReadWriteLock().writeLock();
     private Config config;
     private IdxFileFacade idxFileFacade;
-
-    private RandomAccessFile writeDataAccessFile = null;
-    private FileChannel writeDataFileChannel = null;
-    private MappedByteBuffer writeMappedByteBuffer;
-
-    private RandomAccessFile readDataAccessFile = null;
-    private FileChannel readDataFileChannel = null;
-    private MappedByteBuffer readMappedByteBuffer;
+    private DataFileFacade dataFileFacade;
 
     public DefaultLocalQueue(Config config) {
         this.config = config;
@@ -41,7 +29,7 @@ public class DefaultLocalQueue implements LocalQueue {
     @Override public void init() {
         initStorageDir();
         initIdxFile();
-        initDataResource();
+        initDataFile();
     }
 
     @Override public boolean offer(byte[] data) {
@@ -51,18 +39,21 @@ public class DefaultLocalQueue implements LocalQueue {
             if (isCrossFileCapacity(data)) {
                 try {
                     int newWriteDataFileIdx = idxFileFacade.pollWriteDataFileIdx() + 1;
-                    generateWriteDataResource(newWriteDataFileIdx);
+                    dataFileFacade.generateWriteDataResource(newWriteDataFileIdx);
+                    if (dataFileFacade.isNewWriteFile()) {
+                        idxFileFacade.resetNewFileWriteIdx(newWriteDataFileIdx);
+                    }
                 } catch (IOException e) {
                     log.error(e.getLocalizedMessage(), e);
                 }
             }
 
             int writeIndex = idxFileFacade.pollWriteIdx();
-            writeMappedByteBuffer.position(writeIndex);
-            writeMappedByteBuffer.putInt(data.length);
-            writeMappedByteBuffer.put(data);
-            idxFileFacade.offerWriteIdx(writeIndex + Integer.BYTES + data.length);
-            offerWriteIdxInDataFile();
+            dataFileFacade.putData(writeIndex, data);
+
+            int increasedWriteIdx = writeIndex + Integer.BYTES + data.length;
+            idxFileFacade.offerWriteIdx(increasedWriteIdx);
+            dataFileFacade.offerWriteIdxInDataFile(increasedWriteIdx);
             return true;
         } finally {
             lock.unlock();
@@ -81,9 +72,9 @@ public class DefaultLocalQueue implements LocalQueue {
             // 如果超过文件的容量，则需要另外开启一个文件
             if (isCrossWriteCapacity()) {
                 try {
-                    closeReadFile();
-                    int nextFileIdx = getNextFileIdx();
-                    generateReadDataResource(nextFileIdx);
+                    dataFileFacade.closeReadResource();
+                    int nextFileIdx = dataFileFacade.getNextFileIdx();
+                    dataFileFacade.generateReadDataResource(nextFileIdx);
                     idxFileFacade.resetNewFileReadIdx(nextFileIdx);
                 } catch (IOException e) {
                     log.error(e.getLocalizedMessage(), e);
@@ -91,9 +82,8 @@ public class DefaultLocalQueue implements LocalQueue {
             }
 
             int readIndex = idxFileFacade.pollReadIdx();
-            int length = readMappedByteBuffer.getInt(readIndex);
-            byte[] data = readData(readIndex, length);
-            idxFileFacade.offerReadIdx(readIndex + Integer.BYTES + length);
+            byte[] data = dataFileFacade.readData(readIndex);
+            idxFileFacade.offerReadIdx(readIndex + Integer.BYTES + data.length);
             return data;
         } finally {
             lock.unlock();
@@ -101,10 +91,7 @@ public class DefaultLocalQueue implements LocalQueue {
     }
 
     @Override public void close() {
-        CloseUtil.closeQuietly(writeDataFileChannel);
-        CloseUtil.closeQuietly(writeDataAccessFile);
-        CloseUtil.closeQuietly(readDataFileChannel);
-        CloseUtil.closeQuietly(readDataAccessFile);
+        dataFileFacade.close();
         idxFileFacade.close();
     }
 
@@ -124,41 +111,14 @@ public class DefaultLocalQueue implements LocalQueue {
     }
 
     /**
-     * 初始化数据资源
+     * 初始化数据文件
      */
-    private void initDataResource() {
-        try {
-            generateWriteDataResource(idxFileFacade.pollWriteDataFileIdx());
-            generateReadDataResource(idxFileFacade.pollReadDataFileIdx());
-        } catch (IOException e) {
-            log.error(e.getLocalizedMessage(), e);
+    private void initDataFile() {
+        dataFileFacade = new DataFileFacade(config);
+        dataFileFacade.init(idxFileFacade.pollWriteDataFileIdx(), idxFileFacade.pollReadDataFileIdx());
+        if (dataFileFacade.isNewWriteFile()) {
+            idxFileFacade.resetNewFileWriteIdx(idxFileFacade.pollWriteDataFileIdx());
         }
-    }
-
-    private void generateWriteDataResource(int writeDataFileIdx) throws IOException {
-        String writeDataFilePath = generateDataFilePath(writeDataFileIdx);
-        boolean newCreated = FileUtil.makeFile(writeDataFilePath);
-        writeDataAccessFile = new RandomAccessFile(writeDataFilePath, "rwd");
-        writeDataFileChannel = writeDataAccessFile.getChannel();
-        writeMappedByteBuffer = generateBuffer(writeDataFileChannel);
-
-        if (newCreated) {
-            idxFileFacade.resetNewFileWriteIdx(writeDataFileIdx);
-            initOfferFileCapacity();
-            initOfferNextFileIdx();
-            initOfferWriteIdx();
-        }
-    }
-
-    private void generateReadDataResource(int fileIdx) throws IOException {
-        String readDataFilePath = generateDataFilePath(fileIdx);
-        readDataAccessFile = new RandomAccessFile(readDataFilePath, "rwd");
-        readDataFileChannel = readDataAccessFile.getChannel();
-        readMappedByteBuffer = generateBuffer(readDataFileChannel);
-    }
-
-    private int getNextFileIdx() {
-        return readMappedByteBuffer.getInt(DataFileStructureEnum.NextFileIdx.getPos());
     }
 
     /**
@@ -169,7 +129,7 @@ public class DefaultLocalQueue implements LocalQueue {
      */
     private boolean isCrossFileCapacity(final byte[] data) {
         final int writeIndex = idxFileFacade.pollWriteIdx();
-        final int fileCapacity = writeMappedByteBuffer.getInt(DataFileStructureEnum.FileCapacity.getPos());
+        final int fileCapacity = dataFileFacade.pollFileCapacity();
         return writeIndex + Integer.BYTES + data.length > fileCapacity;
     }
 
@@ -180,66 +140,15 @@ public class DefaultLocalQueue implements LocalQueue {
      */
     private boolean isCrossWriteCapacity() {
         int readIndex = idxFileFacade.pollReadIdx();
-        int writeCapacity = readMappedByteBuffer.getInt(DataFileStructureEnum.WriteIdx.getPos());
+        int writeCapacity = dataFileFacade.pollWriteIdx();
         return readIndex >= writeCapacity;
     }
 
+    /**
+     * 是否读完所有写入的数据
+     */
     private boolean haveReadAllFile() {
         return isReadAndWriteTheSameFile() && isCrossWriteCapacity();
-    }
-
-    private void closeReadFile() {
-        CloseUtil.closeQuietly(readDataFileChannel);
-        CloseUtil.closeQuietly(readDataAccessFile);
-    }
-
-    private void offerWriteIdxInDataFile() {
-        lock.lock();
-        try {
-            writeMappedByteBuffer.position(DataFileStructureEnum.WriteIdx.getPos());
-            writeMappedByteBuffer.putInt(idxFileFacade.pollWriteIdx());
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    private void initOfferFileCapacity() {
-        lock.lock();
-        try {
-            writeMappedByteBuffer.position(DataFileStructureEnum.FileCapacity.getPos());
-            writeMappedByteBuffer.putInt(config.getDataFileCapacity());
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    private void initOfferNextFileIdx() {
-        lock.lock();
-        try {
-            writeMappedByteBuffer.position(DataFileStructureEnum.NextFileIdx.getPos());
-            writeMappedByteBuffer.putInt(idxFileFacade.pollWriteDataFileIdx() + 1);
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    private void initOfferWriteIdx() {
-        offerWriteIdxInDataFile();
-    }
-
-    /**
-     * 读取内容数据
-     *
-     * @param readIndex 读索引
-     * @param length    内容数据长度
-     * @return 内容数据
-     */
-    private byte[] readData(int readIndex, int length) {
-        byte[] data = new byte[length];
-        for (int i = 0; i < length; i++) {
-            data[i] = readMappedByteBuffer.get(readIndex + Integer.BYTES + i);
-        }
-        return data;
     }
 
     /**
@@ -249,28 +158,5 @@ public class DefaultLocalQueue implements LocalQueue {
      */
     private boolean isReadAndWriteTheSameFile() {
         return Objects.equals(idxFileFacade.pollReadDataFileIdx(), idxFileFacade.pollWriteDataFileIdx());
-    }
-
-    /**
-     * 生成数据文件路径
-     *
-     * @param fileIdx 文件编号
-     * @return 路径字符串
-     */
-    private String generateDataFilePath(Integer fileIdx) {
-        String fileName = String.format(config.getDataFileName(), fileIdx);
-        return config.getStorageDir() + File.separator + fileName;
-    }
-
-    /**
-     * 生成buffer
-     *
-     * @param fileChannel 文件通道
-     * @return buffer
-     * @throws IOException 可能抛出的异常
-     */
-    private MappedByteBuffer generateBuffer(FileChannel fileChannel) throws IOException {
-        final Long initPosition = 0L;
-        return fileChannel.map(FileChannel.MapMode.READ_WRITE, initPosition, config.getDataFileCapacity());
     }
 }
