@@ -16,26 +16,20 @@ import java.util.Objects;
  * @author zhangfb
  */
 @Slf4j
-public class DataFileFacade implements AutoCloseable {
+public class WriteDataFileFacade implements AutoCloseable {
 
     private Config config;
-
     private RandomAccessFile writeDataAccessFile = null;
     private FileChannel writeDataFileChannel = null;
     private MappedByteBuffer writeMappedByteBuffer;
 
-    private RandomAccessFile readDataAccessFile = null;
-    private FileChannel readDataFileChannel = null;
-    private MappedByteBuffer readMappedByteBuffer;
-
-    public DataFileFacade(Config config) {
+    public WriteDataFileFacade(Config config) {
         this.config = config;
     }
 
-    public void init(int writeDataFileIdx, int readDataFileIdx) {
+    public void init(int writeDataFileIdx) {
         try {
             generateWriteDataResource(writeDataFileIdx);
-            generateReadDataResource(readDataFileIdx);
         } catch (IOException e) {
             log.error(e.getLocalizedMessage(), e);
         }
@@ -59,13 +53,6 @@ public class DataFileFacade implements AutoCloseable {
     @Override public void close() {
         CloseUtil.closeQuietly(writeDataFileChannel);
         CloseUtil.closeQuietly(writeDataAccessFile);
-        CloseUtil.closeQuietly(readDataFileChannel);
-        CloseUtil.closeQuietly(readDataAccessFile);
-    }
-
-    public void closeReadResource() {
-        CloseUtil.closeQuietly(readDataFileChannel);
-        CloseUtil.closeQuietly(readDataAccessFile);
     }
 
     public void generateWriteDataResource(int writeDataFileIdx) throws IOException {
@@ -82,13 +69,6 @@ public class DataFileFacade implements AutoCloseable {
         }
     }
 
-    public void generateReadDataResource(int fileIdx) throws IOException {
-        String readDataFilePath = generateDataFilePath(fileIdx);
-        readDataAccessFile = new RandomAccessFile(readDataFilePath, "rwd");
-        readDataFileChannel = readDataAccessFile.getChannel();
-        readMappedByteBuffer = generateBuffer(readDataFileChannel);
-    }
-
     public int pollFileCapacity() {
         return writeMappedByteBuffer.getInt(DataFileStructureEnum.FileCapacity.getPos());
     }
@@ -97,29 +77,6 @@ public class DataFileFacade implements AutoCloseable {
         writeMappedByteBuffer.position(writeIndex);
         writeMappedByteBuffer.putInt(data.length);
         writeMappedByteBuffer.put(data);
-    }
-
-    public int getNextFileIdx() {
-        return readMappedByteBuffer.getInt(DataFileStructureEnum.NextFileIdx.getPos());
-    }
-
-    /**
-     * 读取内容数据
-     *
-     * @param readIndex 读索引
-     * @return 内容数据
-     */
-    public byte[] readData(int readIndex) {
-        int length = readMappedByteBuffer.getInt(readIndex);
-        byte[] data = new byte[length];
-        for (int i = 0; i < length; i++) {
-            data[i] = readMappedByteBuffer.get(readIndex + Integer.BYTES + i);
-        }
-        return data;
-    }
-
-    public int pollWriteIdx() {
-        return readMappedByteBuffer.getInt(DataFileStructureEnum.WriteIdx.getPos());
     }
 
     private void initOfferFileCapacity() {

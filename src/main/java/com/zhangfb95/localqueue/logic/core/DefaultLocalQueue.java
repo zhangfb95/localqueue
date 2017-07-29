@@ -1,7 +1,8 @@
 package com.zhangfb95.localqueue.logic.core;
 
 import com.zhangfb95.localqueue.logic.bean.Config;
-import com.zhangfb95.localqueue.logic.core.data.DataFileFacade;
+import com.zhangfb95.localqueue.logic.core.data.ReadDataFileFacade;
+import com.zhangfb95.localqueue.logic.core.data.WriteDataFileFacade;
 import com.zhangfb95.localqueue.logic.core.idx.IdxFileFacade;
 import com.zhangfb95.localqueue.util.FileUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +21,8 @@ public class DefaultLocalQueue implements LocalQueue {
     private Lock lock = new ReentrantReadWriteLock().writeLock();
     private Config config;
     private IdxFileFacade idxFileFacade;
-    private DataFileFacade dataFileFacade;
+    private WriteDataFileFacade writeDataFileFacade;
+    private ReadDataFileFacade readDataFileFacade;
 
     public DefaultLocalQueue(Config config) {
         this.config = config;
@@ -39,8 +41,8 @@ public class DefaultLocalQueue implements LocalQueue {
             if (isCrossFileCapacity(data)) {
                 try {
                     int newWriteDataFileIdx = idxFileFacade.pollWriteDataFileIdx() + 1;
-                    dataFileFacade.generateWriteDataResource(newWriteDataFileIdx);
-                    if (dataFileFacade.isNewWriteFile()) {
+                    writeDataFileFacade.generateWriteDataResource(newWriteDataFileIdx);
+                    if (writeDataFileFacade.isNewWriteFile()) {
                         idxFileFacade.resetNewFileWriteIdx(newWriteDataFileIdx);
                     }
                 } catch (IOException e) {
@@ -49,11 +51,11 @@ public class DefaultLocalQueue implements LocalQueue {
             }
 
             int writeIndex = idxFileFacade.pollWriteIdx();
-            dataFileFacade.putData(writeIndex, data);
+            writeDataFileFacade.putData(writeIndex, data);
 
             int increasedWriteIdx = writeIndex + Integer.BYTES + data.length;
             idxFileFacade.offerWriteIdx(increasedWriteIdx);
-            dataFileFacade.offerWriteIdxInDataFile(increasedWriteIdx);
+            writeDataFileFacade.offerWriteIdxInDataFile(increasedWriteIdx);
             return true;
         } finally {
             lock.unlock();
@@ -72,9 +74,9 @@ public class DefaultLocalQueue implements LocalQueue {
             // 如果超过文件的容量，则需要另外开启一个文件
             if (isCrossWriteCapacity()) {
                 try {
-                    dataFileFacade.closeReadResource();
-                    int nextFileIdx = dataFileFacade.getNextFileIdx();
-                    dataFileFacade.generateReadDataResource(nextFileIdx);
+                    readDataFileFacade.close();
+                    int nextFileIdx = readDataFileFacade.getNextFileIdx();
+                    readDataFileFacade.generateReadDataResource(nextFileIdx);
                     idxFileFacade.resetNewFileReadIdx(nextFileIdx);
                 } catch (IOException e) {
                     log.error(e.getLocalizedMessage(), e);
@@ -82,7 +84,7 @@ public class DefaultLocalQueue implements LocalQueue {
             }
 
             int readIndex = idxFileFacade.pollReadIdx();
-            byte[] data = dataFileFacade.readData(readIndex);
+            byte[] data = readDataFileFacade.readData(readIndex);
             idxFileFacade.offerReadIdx(readIndex + Integer.BYTES + data.length);
             return data;
         } finally {
@@ -91,7 +93,8 @@ public class DefaultLocalQueue implements LocalQueue {
     }
 
     @Override public void close() {
-        dataFileFacade.close();
+        writeDataFileFacade.close();
+        readDataFileFacade.close();
         idxFileFacade.close();
     }
 
@@ -114,11 +117,13 @@ public class DefaultLocalQueue implements LocalQueue {
      * 初始化数据文件
      */
     private void initDataFile() {
-        dataFileFacade = new DataFileFacade(config);
-        dataFileFacade.init(idxFileFacade.pollWriteDataFileIdx(), idxFileFacade.pollReadDataFileIdx());
-        if (dataFileFacade.isNewWriteFile()) {
+        writeDataFileFacade = new WriteDataFileFacade(config);
+        writeDataFileFacade.init(idxFileFacade.pollWriteDataFileIdx());
+        if (writeDataFileFacade.isNewWriteFile()) {
             idxFileFacade.resetNewFileWriteIdx(idxFileFacade.pollWriteDataFileIdx());
         }
+        readDataFileFacade = new ReadDataFileFacade(config);
+        readDataFileFacade.init(idxFileFacade.pollReadDataFileIdx());
     }
 
     /**
@@ -129,7 +134,7 @@ public class DefaultLocalQueue implements LocalQueue {
      */
     private boolean isCrossFileCapacity(final byte[] data) {
         final int writeIndex = idxFileFacade.pollWriteIdx();
-        final int fileCapacity = dataFileFacade.pollFileCapacity();
+        final int fileCapacity = writeDataFileFacade.pollFileCapacity();
         return writeIndex + Integer.BYTES + data.length > fileCapacity;
     }
 
@@ -140,7 +145,7 @@ public class DefaultLocalQueue implements LocalQueue {
      */
     private boolean isCrossWriteCapacity() {
         int readIndex = idxFileFacade.pollReadIdx();
-        int writeCapacity = dataFileFacade.pollWriteIdx();
+        int writeCapacity = readDataFileFacade.pollWriteIdx();
         return readIndex >= writeCapacity;
     }
 
