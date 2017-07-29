@@ -44,33 +44,31 @@ public class DefaultLocalQueue implements LocalQueue {
         initDataResource();
     }
 
-    @Override public boolean offer(byte[] e) {
+    @Override public boolean offer(byte[] data) {
         lock.lock();
         try {
-            int writeIndex = idxFileFacade.pollWriteIdx();
-
             // 如果超过文件的容量，则需要另外开启一个文件
-            if (writeIndex + Integer.BYTES + e.length >
-                writeMappedByteBuffer.getInt(DataFileStructureEnum.FileCapacity.getPos())) {
+            if (isCrossFileCapacity(data)) {
                 try {
                     int newWriteDataFileIdx = idxFileFacade.pollWriteDataFileIdx() + 1;
                     generateWriteDataResource(newWriteDataFileIdx);
-                    writeIndex = idxFileFacade.pollWriteIdx();
-                } catch (IOException e1) {
-                    log.error(e1.getLocalizedMessage(), e);
+                } catch (IOException e) {
+                    log.error(e.getLocalizedMessage(), e);
                 }
             }
 
+            int writeIndex = idxFileFacade.pollWriteIdx();
             writeMappedByteBuffer.position(writeIndex);
-            writeMappedByteBuffer.putInt(e.length);
-            writeMappedByteBuffer.put(e);
-            idxFileFacade.offerWriteIdx(writeIndex + Integer.BYTES + e.length);
+            writeMappedByteBuffer.putInt(data.length);
+            writeMappedByteBuffer.put(data);
+            idxFileFacade.offerWriteIdx(writeIndex + Integer.BYTES + data.length);
             offerWriteIdxInDataFile();
             return true;
         } finally {
             lock.unlock();
         }
     }
+
 
     @Override public byte[] poll() {
         lock.lock();
@@ -161,6 +159,18 @@ public class DefaultLocalQueue implements LocalQueue {
 
     private int getNextFileIdx() {
         return readMappedByteBuffer.getInt(DataFileStructureEnum.NextFileIdx.getPos());
+    }
+
+    /**
+     * 写索引超过了文件的容量
+     *
+     * @param data 写入的数据
+     * @return true：写入到了文件尽头，false：还可以继续写入
+     */
+    private boolean isCrossFileCapacity(final byte[] data) {
+        final int writeIndex = idxFileFacade.pollWriteIdx();
+        final int fileCapacity = writeMappedByteBuffer.getInt(DataFileStructureEnum.FileCapacity.getPos());
+        return writeIndex + Integer.BYTES + data.length > fileCapacity;
     }
 
     /**
