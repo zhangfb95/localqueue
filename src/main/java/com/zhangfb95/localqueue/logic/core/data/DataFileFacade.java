@@ -11,8 +11,6 @@ import java.io.RandomAccessFile;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Objects;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * @author zhangfb
@@ -20,7 +18,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 @Slf4j
 public class DataFileFacade implements AutoCloseable {
 
-    private Lock lock = new ReentrantReadWriteLock().writeLock();
     private Config config;
 
     private RandomAccessFile writeDataAccessFile = null;
@@ -45,37 +42,8 @@ public class DataFileFacade implements AutoCloseable {
     }
 
     public void offerWriteIdxInDataFile(int writeIdx) {
-        lock.lock();
-        try {
-            writeMappedByteBuffer.position(DataFileStructureEnum.WriteIdx.getPos());
-            writeMappedByteBuffer.putInt(writeIdx);
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    public void initOfferFileCapacity() {
-        lock.lock();
-        try {
-            writeMappedByteBuffer.position(DataFileStructureEnum.FileCapacity.getPos());
-            writeMappedByteBuffer.putInt(config.getDataFileCapacity());
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    public void initOfferNextFileIdx(int writeDataFileIdx) {
-        lock.lock();
-        try {
-            writeMappedByteBuffer.position(DataFileStructureEnum.NextFileIdx.getPos());
-            writeMappedByteBuffer.putInt(writeDataFileIdx + 1);
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    public void initOfferWriteIdx(int writeIdx) {
-        offerWriteIdxInDataFile(writeIdx);
+        writeMappedByteBuffer.position(DataFileStructureEnum.WriteIdx.getPos());
+        writeMappedByteBuffer.putInt(writeIdx);
     }
 
     /**
@@ -152,6 +120,20 @@ public class DataFileFacade implements AutoCloseable {
 
     public int pollWriteIdx() {
         return readMappedByteBuffer.getInt(DataFileStructureEnum.WriteIdx.getPos());
+    }
+
+    private void initOfferFileCapacity() {
+        writeMappedByteBuffer.position(DataFileStructureEnum.FileCapacity.getPos());
+        writeMappedByteBuffer.putInt(config.getDataFileCapacity());
+    }
+
+    private void initOfferNextFileIdx(int writeDataFileIdx) {
+        writeMappedByteBuffer.position(DataFileStructureEnum.NextFileIdx.getPos());
+        writeMappedByteBuffer.putInt(writeDataFileIdx + 1);
+    }
+
+    private void initOfferWriteIdx(int writeIdx) {
+        offerWriteIdxInDataFile(writeIdx);
     }
 
     /**
