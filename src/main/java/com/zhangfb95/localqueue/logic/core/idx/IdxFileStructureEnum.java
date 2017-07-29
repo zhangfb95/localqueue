@@ -11,7 +11,8 @@ public enum IdxFileStructureEnum {
     ReadDataFileIdx(0, Integer.BYTES),
     ReadIdx(calcPos(ReadDataFileIdx), Integer.BYTES),
     WriteDataFileIdx(calcPos(ReadIdx), Integer.BYTES),
-    WriteIdx(calcPos(WriteDataFileIdx), Integer.BYTES);
+    WriteIdx(calcPos(WriteDataFileIdx), Integer.BYTES),
+    InitStatus(calcPos(WriteIdx), Integer.BYTES);
 
     private int pos;
     private int length;

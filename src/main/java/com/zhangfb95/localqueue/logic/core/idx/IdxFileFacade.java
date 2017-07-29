@@ -9,9 +9,9 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.Objects;
 
+import static com.zhangfb95.localqueue.logic.core.idx.IdxFileStructureEnum.InitStatus;
 import static com.zhangfb95.localqueue.logic.core.idx.IdxFileStructureEnum.ReadDataFileIdx;
 import static com.zhangfb95.localqueue.logic.core.idx.IdxFileStructureEnum.ReadIdx;
 import static com.zhangfb95.localqueue.logic.core.idx.IdxFileStructureEnum.WriteDataFileIdx;
@@ -31,8 +31,6 @@ import static com.zhangfb95.localqueue.logic.core.idx.IdxFileStructureEnum.Write
 @Slf4j
 public class IdxFileFacade implements AutoCloseable {
 
-    private Lock lock = new ReentrantReadWriteLock().writeLock();
-
     private String filePath;
     private RandomAccessFile file;
     private FileChannel fc;
@@ -44,11 +42,11 @@ public class IdxFileFacade implements AutoCloseable {
 
     public void init() {
         try {
-            boolean newCreated = FileUtil.makeFile(filePath);
+            FileUtil.makeFile(filePath);
             file = new RandomAccessFile(filePath, "rwd");
             fc = file.getChannel();
             mappedByteBuffer = fc.map(FileChannel.MapMode.READ_WRITE, 0L, 1024L * 1024L * 10L);
-            if (newCreated) {
+            if (!Objects.equals(pollInitStatus(), IdxFileInitStatus.INITIALIZED.getCode())) {
                 initData();
             }
         } catch (IOException e) {
@@ -57,75 +55,39 @@ public class IdxFileFacade implements AutoCloseable {
     }
 
     public Integer pollReadDataFileIdx() {
-        lock.lock();
-        try {
-            return get(ReadDataFileIdx);
-        } finally {
-            lock.unlock();
-        }
+        return get(ReadDataFileIdx);
     }
 
     public Integer pollReadIdx() {
-        lock.lock();
-        try {
-            return get(ReadIdx);
-        } finally {
-            lock.unlock();
-        }
+        return get(ReadIdx);
     }
 
     public Integer pollWriteDataFileIdx() {
-        lock.lock();
-        try {
-            return get(WriteDataFileIdx);
-        } finally {
-            lock.unlock();
-        }
+        return get(WriteDataFileIdx);
     }
 
     public Integer pollWriteIdx() {
-        lock.lock();
-        try {
-            return get(WriteIdx);
-        } finally {
-            lock.unlock();
-        }
+        return get(WriteIdx);
+    }
+
+    private Integer pollInitStatus() {
+        return get(InitStatus);
     }
 
     public void offerReadDataFileIdx(Integer value) {
-        lock.lock();
-        try {
-            put(ReadDataFileIdx, value);
-        } finally {
-            lock.unlock();
-        }
+        put(ReadDataFileIdx, value);
     }
 
     public void offerReadIdx(Integer value) {
-        lock.lock();
-        try {
-            put(ReadIdx, value);
-        } finally {
-            lock.unlock();
-        }
+        put(ReadIdx, value);
     }
 
     public void offerWriteDataFileIdx(Integer value) {
-        lock.lock();
-        try {
-            put(WriteDataFileIdx, value);
-        } finally {
-            lock.unlock();
-        }
+        put(WriteDataFileIdx, value);
     }
 
     public void offerWriteIdx(Integer value) {
-        lock.lock();
-        try {
-            put(WriteIdx, value);
-        } finally {
-            lock.unlock();
-        }
+        put(WriteIdx, value);
     }
 
     /**
@@ -134,13 +96,8 @@ public class IdxFileFacade implements AutoCloseable {
      * @param nextFileIdx 下一文件序号
      */
     public void resetNewFileReadIdx(int nextFileIdx) {
-        lock.lock();
-        try {
-            offerReadDataFileIdx(nextFileIdx);
-            offerReadIdx(DataFileStructureEnum.totalBytes());
-        } finally {
-            lock.unlock();
-        }
+        offerReadDataFileIdx(nextFileIdx);
+        offerReadIdx(DataFileStructureEnum.totalBytes());
     }
 
     /**
@@ -149,13 +106,8 @@ public class IdxFileFacade implements AutoCloseable {
      * @param nextFileIdx 下一文件序号
      */
     public void resetNewFileWriteIdx(int nextFileIdx) {
-        lock.lock();
-        try {
-            offerWriteDataFileIdx(nextFileIdx);
-            offerWriteIdx(DataFileStructureEnum.totalBytes());
-        } finally {
-            lock.unlock();
-        }
+        offerWriteDataFileIdx(nextFileIdx);
+        offerWriteIdx(DataFileStructureEnum.totalBytes());
     }
 
     /**
@@ -171,11 +123,16 @@ public class IdxFileFacade implements AutoCloseable {
      * 初始化数据
      */
     private void initData() {
-        final int defaultValue = 0;
-        offerReadDataFileIdx(defaultValue);
+        final int fileIdxDefaultValue = 0;
+        offerReadDataFileIdx(fileIdxDefaultValue);
         offerReadIdx(DataFileStructureEnum.totalBytes());
-        offerWriteDataFileIdx(defaultValue);
-        offerWriteIdx(defaultValue);
+        offerWriteDataFileIdx(fileIdxDefaultValue);
+        offerWriteIdx(DataFileStructureEnum.totalBytes());
+        offerInitStatus(IdxFileInitStatus.INITIALIZED.getCode());
+    }
+
+    private void offerInitStatus(int value) {
+        put(InitStatus, value);
     }
 
     /**
