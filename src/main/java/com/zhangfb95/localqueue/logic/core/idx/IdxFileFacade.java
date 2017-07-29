@@ -1,6 +1,5 @@
 package com.zhangfb95.localqueue.logic.core.idx;
 
-import com.zhangfb95.localqueue.logic.bean.IdxBean;
 import com.zhangfb95.localqueue.logic.core.data.DataFileStructureEnum;
 import com.zhangfb95.localqueue.util.CloseUtil;
 import com.zhangfb95.localqueue.util.FileUtil;
@@ -54,20 +53,6 @@ public class IdxFileFacade implements AutoCloseable {
             }
         } catch (IOException e) {
             log.error(e.getLocalizedMessage(), e);
-        }
-    }
-
-    public IdxBean poll() {
-        lock.lock();
-        try {
-            IdxBean idxBean = new IdxBean();
-            idxBean.setReadDataFileIdx(get(ReadDataFileIdx));
-            idxBean.setReadIdx(get(ReadIdx));
-            idxBean.setWriteDataFileIdx(get(WriteDataFileIdx));
-            idxBean.setWriteIdx(get(WriteIdx));
-            return idxBean;
-        } finally {
-            lock.unlock();
         }
     }
 
