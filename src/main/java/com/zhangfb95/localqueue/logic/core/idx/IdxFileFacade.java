@@ -70,10 +70,6 @@ public class IdxFileFacade implements AutoCloseable {
         return get(WriteIdx);
     }
 
-    private Integer pollInitStatus() {
-        return get(InitStatus);
-    }
-
     public void offerReadDataFileIdx(Integer value) {
         put(ReadDataFileIdx, value);
     }
@@ -129,6 +125,10 @@ public class IdxFileFacade implements AutoCloseable {
         offerWriteDataFileIdx(fileIdxDefaultValue);
         offerWriteIdx(DataFileStructureEnum.totalBytes());
         offerInitStatus(IdxFileInitStatus.INITIALIZED.getCode());
+    }
+
+    private Integer pollInitStatus() {
+        return get(InitStatus);
     }
 
     private void offerInitStatus(int value) {
