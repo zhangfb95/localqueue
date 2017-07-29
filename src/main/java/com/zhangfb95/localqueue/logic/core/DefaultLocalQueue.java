@@ -34,7 +34,7 @@ public class DefaultLocalQueue implements LocalQueue {
         initDataFile();
     }
 
-    @Override public boolean offer(byte[] data) {
+    @Override public void offer(byte[] data) {
         lock.lock();
         try {
             // 如果超过文件的容量，则需要另外开启一个文件
@@ -56,7 +56,6 @@ public class DefaultLocalQueue implements LocalQueue {
             int increasedWriteIdx = writeIndex + Integer.BYTES + data.length;
             idxFileFacade.offerWriteIdx(increasedWriteIdx);
             writeDataFileFacade.offerWriteIdxInDataFile(increasedWriteIdx);
-            return true;
         } finally {
             lock.unlock();
         }

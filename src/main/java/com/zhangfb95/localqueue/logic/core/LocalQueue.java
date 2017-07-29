@@ -7,7 +7,7 @@ public interface LocalQueue {
 
     void init();
 
-    boolean offer(byte[] e);
+    void offer(byte[] e);
 
     byte[] poll();
 
