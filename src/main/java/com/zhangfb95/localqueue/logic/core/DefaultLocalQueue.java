@@ -39,16 +39,9 @@ public class DefaultLocalQueue implements LocalQueue {
     }
 
     @Override public void init() {
-        FileUtil.makeDir(config.getStorageDir());
-        idxFileFacade = new IdxFileFacade(config.getIdxFilePath());
-        idxFileFacade.init();
-
-        try {
-            generateWriteDataResource(idxFileFacade.pollWriteDataFileIdx());
-            generateReadDataResource(idxFileFacade.pollReadDataFileIdx());
-        } catch (IOException e) {
-            log.error(e.getLocalizedMessage(), e);
-        }
+        initStorageDir();
+        initIdxFile();
+        initDataResource();
     }
 
     @Override public boolean offer(byte[] e) {
@@ -115,6 +108,33 @@ public class DefaultLocalQueue implements LocalQueue {
         CloseUtil.closeQuietly(readDataFileChannel);
         CloseUtil.closeQuietly(readDataAccessFile);
         idxFileFacade.close();
+    }
+
+    /**
+     * 初始化存储目录
+     */
+    private void initStorageDir() {
+        FileUtil.makeDir(config.getStorageDir());
+    }
+
+    /**
+     * 初始化索引文件
+     */
+    private void initIdxFile() {
+        idxFileFacade = new IdxFileFacade(config.getIdxFilePath());
+        idxFileFacade.init();
+    }
+
+    /**
+     * 初始化数据资源
+     */
+    private void initDataResource() {
+        try {
+            generateWriteDataResource(idxFileFacade.pollWriteDataFileIdx());
+            generateReadDataResource(idxFileFacade.pollReadDataFileIdx());
+        } catch (IOException e) {
+            log.error(e.getLocalizedMessage(), e);
+        }
     }
 
     private void generateWriteDataResource(int writeDataFileIdx) throws IOException {
