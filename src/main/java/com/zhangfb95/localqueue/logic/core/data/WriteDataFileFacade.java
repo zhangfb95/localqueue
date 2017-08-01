@@ -3,6 +3,7 @@ package com.zhangfb95.localqueue.logic.core.data;
 import com.zhangfb95.localqueue.logic.bean.Config;
 import com.zhangfb95.localqueue.util.CloseUtil;
 import com.zhangfb95.localqueue.util.FileUtil;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
@@ -19,6 +20,8 @@ import java.util.Objects;
 public class WriteDataFileFacade implements AutoCloseable {
 
     private Config config;
+    @Getter
+    private volatile String fileName;
     private RandomAccessFile writeDataAccessFile = null;
     private FileChannel writeDataFileChannel = null;
     private MappedByteBuffer writeMappedByteBuffer;
@@ -58,6 +61,7 @@ public class WriteDataFileFacade implements AutoCloseable {
     public void generateWriteDataResource(int writeDataFileIdx) throws IOException {
         String writeDataFilePath = generateDataFilePath(writeDataFileIdx);
         boolean newCreated = FileUtil.makeFile(writeDataFilePath);
+        fileName = new File(writeDataFilePath).getName();
         writeDataAccessFile = new RandomAccessFile(writeDataFilePath, "rwd");
         writeDataFileChannel = writeDataAccessFile.getChannel();
         writeMappedByteBuffer = generateBuffer(writeDataFileChannel);

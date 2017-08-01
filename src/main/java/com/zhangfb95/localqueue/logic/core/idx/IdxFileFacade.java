@@ -3,8 +3,10 @@ package com.zhangfb95.localqueue.logic.core.idx;
 import com.zhangfb95.localqueue.logic.core.data.DataFileStructureEnum;
 import com.zhangfb95.localqueue.util.CloseUtil;
 import com.zhangfb95.localqueue.util.FileUtil;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.MappedByteBuffer;
@@ -31,6 +33,8 @@ import static com.zhangfb95.localqueue.logic.core.idx.IdxFileStructureEnum.Write
 @Slf4j
 public class IdxFileFacade implements AutoCloseable {
 
+    @Getter
+    private volatile String fileName;
     private String filePath;
     private RandomAccessFile file;
     private FileChannel fc;
@@ -43,6 +47,7 @@ public class IdxFileFacade implements AutoCloseable {
     public void init() {
         try {
             FileUtil.makeFile(filePath);
+            fileName = new File(filePath).getName();
             file = new RandomAccessFile(filePath, "rwd");
             fc = file.getChannel();
             mappedByteBuffer = fc.map(FileChannel.MapMode.READ_WRITE, 0L, 1024L * 1024L * 10L);

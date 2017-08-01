@@ -3,10 +3,13 @@ package com.zhangfb95.localqueue.logic.core;
 import com.zhangfb95.localqueue.logic.bean.Config;
 import com.zhangfb95.localqueue.logic.core.data.ReadDataFileFacade;
 import com.zhangfb95.localqueue.logic.core.data.WriteDataFileFacade;
+import com.zhangfb95.localqueue.logic.core.gc.GcCondition;
+import com.zhangfb95.localqueue.logic.core.gc.GcOperation;
 import com.zhangfb95.localqueue.logic.core.idx.IdxFileFacade;
 import com.zhangfb95.localqueue.util.FileUtil;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Objects;
 import java.util.concurrent.locks.Lock;
@@ -16,13 +19,14 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * @author zhangfb
  */
 @Slf4j
-public class DefaultLocalQueue implements LocalQueue {
+public class DefaultLocalQueue implements LocalQueue, GcCondition {
 
     private Lock lock = new ReentrantReadWriteLock().writeLock();
     private Config config;
     private IdxFileFacade idxFileFacade;
     private WriteDataFileFacade writeDataFileFacade;
     private ReadDataFileFacade readDataFileFacade;
+    private GcOperation gcOperation;
 
     public DefaultLocalQueue(Config config) {
         this.config = config;
@@ -32,6 +36,7 @@ public class DefaultLocalQueue implements LocalQueue {
         initStorageDir();
         initIdxFile();
         initDataFile();
+        initGcOperation();
     }
 
     @Override public void offer(byte[] data) {
@@ -97,9 +102,15 @@ public class DefaultLocalQueue implements LocalQueue {
             writeDataFileFacade.close();
             readDataFileFacade.close();
             idxFileFacade.close();
+            gcOperation.stop();
         } finally {
             lock.unlock();
         }
+    }
+
+    @Override public boolean canGc(File file) {
+        return !Objects.equals(idxFileFacade.getFileName(), file.getName()) &&
+               !Objects.equals(writeDataFileFacade.getFileName(), file.getName());
     }
 
     /**
@@ -128,6 +139,14 @@ public class DefaultLocalQueue implements LocalQueue {
         }
         readDataFileFacade = new ReadDataFileFacade(config);
         readDataFileFacade.init(idxFileFacade.pollReadDataFileIdx());
+    }
+
+    /**
+     * 初始化gc操作
+     */
+    private void initGcOperation() {
+        gcOperation = new GcOperation(config, this);
+        gcOperation.release();
     }
 
     /**
