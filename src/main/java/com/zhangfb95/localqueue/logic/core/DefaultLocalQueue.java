@@ -92,9 +92,14 @@ public class DefaultLocalQueue implements LocalQueue {
     }
 
     @Override public void close() {
-        writeDataFileFacade.close();
-        readDataFileFacade.close();
-        idxFileFacade.close();
+        lock.lock();
+        try {
+            writeDataFileFacade.close();
+            readDataFileFacade.close();
+            idxFileFacade.close();
+        } finally {
+            lock.unlock();
+        }
     }
 
     /**
