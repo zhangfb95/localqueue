@@ -10,7 +10,7 @@ import java.util.concurrent.TimeUnit;
  * @author zhangfb
  */
 @Slf4j
-public class GcOperation {
+public class DefaultGcStrategy implements GcStrategy {
 
     private Config config;
     private Long gcExceedTime = 2L; // 回收超时时间
@@ -18,7 +18,7 @@ public class GcOperation {
     private GcCondition gcCondition;
     private volatile boolean stopped = false;
 
-    public GcOperation(Config config, GcCondition gcCondition) {
+    public DefaultGcStrategy(Config config, GcCondition gcCondition) {
         this.gcCondition = gcCondition;
         if (config.getGcExceedTime() != null && config.getGcTimeUnit() != null) {
             gcExceedTime = config.getGcExceedTime();

@@ -3,8 +3,9 @@ package com.zhangfb95.localqueue.logic.core;
 import com.zhangfb95.localqueue.logic.bean.Config;
 import com.zhangfb95.localqueue.logic.core.data.ReadDataFileFacade;
 import com.zhangfb95.localqueue.logic.core.data.WriteDataFileFacade;
+import com.zhangfb95.localqueue.logic.core.gc.DefaultGcStrategy;
 import com.zhangfb95.localqueue.logic.core.gc.GcCondition;
-import com.zhangfb95.localqueue.logic.core.gc.GcOperation;
+import com.zhangfb95.localqueue.logic.core.gc.GcStrategy;
 import com.zhangfb95.localqueue.logic.core.idx.IdxFileFacade;
 import com.zhangfb95.localqueue.util.FileUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +27,7 @@ public class DefaultLocalQueue implements LocalQueue, GcCondition {
     private IdxFileFacade idxFileFacade;
     private WriteDataFileFacade writeDataFileFacade;
     private ReadDataFileFacade readDataFileFacade;
-    private GcOperation gcOperation;
+    private GcStrategy gcStrategy;
 
     public DefaultLocalQueue(Config config) {
         this.config = config;
@@ -102,7 +103,7 @@ public class DefaultLocalQueue implements LocalQueue, GcCondition {
             writeDataFileFacade.close();
             readDataFileFacade.close();
             idxFileFacade.close();
-            gcOperation.stop();
+            gcStrategy.stop();
         } finally {
             lock.unlock();
         }
@@ -175,8 +176,8 @@ public class DefaultLocalQueue implements LocalQueue, GcCondition {
      * 初始化gc操作
      */
     private void initGcOperation() {
-        gcOperation = new GcOperation(config, this);
-        gcOperation.release();
+        gcStrategy = new DefaultGcStrategy(config, this);
+        gcStrategy.release();
     }
 
     /**
