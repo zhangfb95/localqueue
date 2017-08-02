@@ -108,9 +108,39 @@ public class DefaultLocalQueue implements LocalQueue, GcCondition {
         }
     }
 
+    /**
+     * 当满足以下条件时，可以删除文件，
+     * 1. 不是索引文件
+     * 2. 不是写文件
+     * 3. 文件索引号小于读文件的文件索引号
+     *
+     * @param file 待删除的文件
+     * @return true：可以删除，false：不可以删除
+     */
     @Override public boolean canGc(File file) {
-        return !Objects.equals(idxFileFacade.getFileName(), file.getName()) &&
-               !Objects.equals(writeDataFileFacade.getFileName(), file.getName());
+        String fileName = file.getName();
+        int fileNameLength = fileName.length();
+        String dataFileName = config.getDataFileName();
+        int dataFileNameLength = dataFileName.length();
+
+        int startIndex = 0;
+        for (int i = 0; i < dataFileNameLength; i++) {
+            if (!Objects.equals(fileName.charAt(i), dataFileName.charAt(i))) {
+                startIndex = i;
+                break;
+            }
+        }
+        int endIndex = 0;
+        for (int i = dataFileNameLength - 1, j = fileNameLength - 1; i >= 0; i--, j--) {
+            if (!Objects.equals(dataFileName.charAt(i), fileName.charAt(j))) {
+                endIndex = j;
+                break;
+            }
+        }
+        int idx = Integer.parseInt(fileName.substring(startIndex, endIndex + 1));
+        return !Objects.equals(idxFileFacade.getFileName(), fileName) &&
+               !Objects.equals(writeDataFileFacade.getFileName(), fileName) &&
+               idx < idxFileFacade.pollReadDataFileIdx();
     }
 
     /**
