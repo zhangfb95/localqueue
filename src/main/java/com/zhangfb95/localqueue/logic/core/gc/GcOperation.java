@@ -16,7 +16,7 @@ public class GcOperation {
     private Long gcExceedTime = 2L; // 回收超时时间
     private TimeUnit gcTimeUnit = TimeUnit.DAYS; // 回收超时时间粒度，
     private GcCondition gcCondition;
-    private volatile boolean stoped = false;
+    private volatile boolean stopped = false;
 
     public GcOperation(Config config, GcCondition gcCondition) {
         this.gcCondition = gcCondition;
@@ -37,18 +37,21 @@ public class GcOperation {
                     if (files != null && files.length > 0) {
                         for (File file : files) {
                             boolean flag = file.delete();
+                            String fileName = file.getName();
                             if (flag) {
-                                log.info("file '{}' great than exceed time, have been deleted", file.getName());
+                                log.info("file '{}' great than exceed time, have been deleted", fileName);
+                            } else {
+                                log.info("delete file '{}' fail", fileName);
                             }
                         }
-                    } else {
-                        Thread.sleep(10000L);
                     }
                 } catch (Exception e) {
                     log.error(e.getLocalizedMessage(), e);
                 }
 
-                if (stoped) {
+                sleep();
+
+                if (stopped) {
                     return;
                 }
             }
@@ -56,10 +59,18 @@ public class GcOperation {
     }
 
     public void stop() {
-        stoped = true;
+        stopped = true;
     }
 
     private boolean greatThanGivenTime(File file) {
         return System.currentTimeMillis() - file.lastModified() > gcTimeUnit.toMillis(gcExceedTime);
+    }
+
+    private void sleep() {
+        try {
+            Thread.sleep(10000L);
+        } catch (Exception e) {
+            log.error(e.getLocalizedMessage(), e);
+        }
     }
 }
