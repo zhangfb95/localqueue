@@ -12,6 +12,8 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -67,7 +69,6 @@ public class DefaultLocalQueue implements LocalQueue, GcCondition {
         }
     }
 
-
     @Override public byte[] poll() {
         lock.lock();
         try {
@@ -95,6 +96,19 @@ public class DefaultLocalQueue implements LocalQueue, GcCondition {
         } finally {
             lock.unlock();
         }
+    }
+
+    @Override public List<byte[]> poll(int count) {
+        List<byte[]> list = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            byte[] data = poll();
+            // 数据已经读取完毕，跳出循环以便返回
+            if (data == null) {
+                break;
+            }
+            list.add(data);
+        }
+        return list;
     }
 
     @Override public void close() {
