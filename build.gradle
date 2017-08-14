@@ -2,6 +2,7 @@ configure(allprojects) {
     apply plugin: 'java'
 
     group 'com.zhangfb95'
+    version '1.0-SNAPSHOT'
 
     ext.junitVersion = '4.12'
     ext.slf4jVersion = '1.7.25'
