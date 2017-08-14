@@ -1,6 +1,6 @@
 rootProject.name = 'localqueue-root'
 include 'localqueue-core'
-findProject(':localqueue-core')?.name='localqueue'
+findProject(':localqueue-core')?.name = 'localqueue'
 include 'extra'
 findProject(':extra')?.name = 'localqueue-extra'
 include 'localqueue-extra:async'
