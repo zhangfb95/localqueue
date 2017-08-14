@@ -1,5 +1,4 @@
-configure(allprojects) {
-    apply plugin: 'java'
+configure(subprojects) {
     apply plugin: 'maven'
 
     group 'com.zhangfb95'
@@ -12,7 +11,4 @@ configure(allprojects) {
     repositories {
         mavenCentral()
     }
-
-    sourceCompatibility = 1.8
-    targetCompatibility = 1.8
 }

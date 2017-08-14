@@ -1,3 +1,7 @@
+apply plugin: 'java'
+
+sourceCompatibility = 1.8
+
 dependencies {
     testCompile "junit:junit:${junitVersion}"
     compile "org.slf4j:slf4j-api:${slf4jVersion}"
