@@ -1,5 +1,6 @@
 configure(allprojects) {
     apply plugin: 'java'
+    apply plugin: 'maven'
 
     group 'com.zhangfb95'
     version '1.0-SNAPSHOT'
