@@ -1,4 +1,4 @@
-package com.zhangfb95.localqueue.core.extra.async;
+package com.zhangfb95.localqueue.extra.async;
 
 import com.zhangfb95.localqueue.core.logic.feature.DefaultLocalQueue;
 import com.zhangfb95.localqueue.core.logic.feature.LocalQueue;

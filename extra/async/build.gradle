@@ -4,4 +4,8 @@ sourceCompatibility = 1.8
 
 dependencies {
     compile project(':localqueue-core')
+    compile "org.projectlombok:lombok:${lombokVersion}"
+    testCompile "junit:junit:${junitVersion}"
+    compile 'com.fasterxml.jackson.core:jackson-core:2.9.0'
+    compile 'com.fasterxml.jackson.core:jackson-databind:2.9.0'
 }
