@@ -1,4 +1,4 @@
-package com.zhangfb95.localqueue.logic.bean;
+package com.zhangfb95.localqueue.core.logic.bean;
 
 import lombok.Data;
 

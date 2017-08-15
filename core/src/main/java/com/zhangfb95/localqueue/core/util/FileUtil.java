@@ -1,4 +1,4 @@
-package com.zhangfb95.localqueue.util;
+package com.zhangfb95.localqueue.core.util;
 
 import lombok.extern.slf4j.Slf4j;
 

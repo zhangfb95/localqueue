@@ -1,8 +1,8 @@
-package com.zhangfb95.localqueue;
+package com.zhangfb95.localqueue.core;
 
-import com.zhangfb95.localqueue.logic.bean.Config;
-import com.zhangfb95.localqueue.logic.core.DefaultLocalQueue;
-import com.zhangfb95.localqueue.logic.core.LocalQueue;
+import com.zhangfb95.localqueue.core.logic.feature.DefaultLocalQueue;
+import com.zhangfb95.localqueue.core.logic.feature.LocalQueue;
+import com.zhangfb95.localqueue.core.logic.bean.Config;
 import org.junit.Test;
 
 /**
