@@ -5,7 +5,13 @@ package com.zhangfb95.localqueue.core.logic.feature.gc;
  */
 public interface GcStrategy {
 
+    /**
+     * 资源释放
+     */
     void release();
 
+    /**
+     * 停止gc
+     */
     void stop();
 }

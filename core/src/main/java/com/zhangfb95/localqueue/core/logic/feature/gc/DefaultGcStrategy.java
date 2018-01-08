@@ -4,6 +4,8 @@ import com.zhangfb95.localqueue.core.logic.bean.Config;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -13,9 +15,30 @@ import java.util.concurrent.TimeUnit;
 public class DefaultGcStrategy implements GcStrategy {
 
     private Config config;
-    private Long gcExceedTime = 2L; // 回收超时时间
-    private TimeUnit gcTimeUnit = TimeUnit.DAYS; // 回收超时时间粒度，
+
+    /**
+     * 回收超时时间
+     */
+    private Long gcExceedTime = 2L;
+
+    /**
+     * 回收超时时间粒度
+     */
+    private TimeUnit gcTimeUnit = TimeUnit.DAYS;
+
+    /**
+     * 单线程服务，不用考虑并发的情况
+     */
+    private ExecutorService singleThreadExecutor = Executors.newSingleThreadExecutor();
+
+    /**
+     * gc条件对象，用于判别何时应该回收
+     */
     private GcCondition gcCondition;
+
+    /**
+     * 停止标识，用于停止gc动作
+     */
     private volatile boolean stopped = false;
 
     public DefaultGcStrategy(Config config, GcCondition gcCondition) {
@@ -27,10 +50,9 @@ public class DefaultGcStrategy implements GcStrategy {
         this.config = config;
     }
 
-    @Override
-    public void release() {
+    @Override public void release() {
         final File storageDir = new File(config.getStorageDir());
-        new Thread(() -> {
+        singleThreadExecutor.submit(() -> {
             while (true) {
                 try {
                     File[] files = storageDir.listFiles(
@@ -56,11 +78,10 @@ public class DefaultGcStrategy implements GcStrategy {
                     return;
                 }
             }
-        }).start();
+        });
     }
 
-    @Override
-    public void stop() {
+    @Override public void stop() {
         stopped = true;
     }
 
