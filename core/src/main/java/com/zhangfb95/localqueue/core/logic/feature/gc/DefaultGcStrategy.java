@@ -27,6 +27,7 @@ public class DefaultGcStrategy implements GcStrategy {
         this.config = config;
     }
 
+    @Override
     public void release() {
         final File storageDir = new File(config.getStorageDir());
         new Thread(() -> {
@@ -58,6 +59,7 @@ public class DefaultGcStrategy implements GcStrategy {
         }).start();
     }
 
+    @Override
     public void stop() {
         stopped = true;
     }
