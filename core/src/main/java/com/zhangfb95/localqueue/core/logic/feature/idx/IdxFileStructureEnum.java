@@ -8,10 +8,29 @@ import lombok.Getter;
 @Getter
 public enum IdxFileStructureEnum {
 
+    /**
+     * 读数据文件索引
+     */
     ReadDataFileIdx(0, Integer.BYTES),
+
+    /**
+     * 读索引
+     */
     ReadIdx(calcPos(ReadDataFileIdx), Integer.BYTES),
+
+    /**
+     * 写数据文件索引
+     */
     WriteDataFileIdx(calcPos(ReadIdx), Integer.BYTES),
+
+    /**
+     * 写索引
+     */
     WriteIdx(calcPos(WriteDataFileIdx), Integer.BYTES),
+
+    /**
+     * 初始状态
+     */
     InitStatus(calcPos(WriteIdx), Integer.BYTES);
 
     private int pos;

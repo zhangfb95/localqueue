@@ -8,7 +8,14 @@ import lombok.Getter;
 @Getter
 public enum IdxFileInitStatus {
 
+    /**
+     * 未初始化
+     */
     UNINITIALIZED(0, "未初始化"),
+
+    /**
+     * 已初始化
+     */
     INITIALIZED(1, "已初始化");
 
     private int code;

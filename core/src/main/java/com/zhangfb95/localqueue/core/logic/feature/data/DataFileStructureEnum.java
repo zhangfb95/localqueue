@@ -8,8 +8,19 @@ import lombok.Getter;
 @Getter
 public enum DataFileStructureEnum {
 
+    /**
+     * 文件容量
+     */
     FileCapacity(0, Integer.BYTES),
+
+    /**
+     * 下一个文件的索引
+     */
     NextFileIdx(calcPos(FileCapacity), Integer.BYTES),
+
+    /**
+     * 写索引
+     */
     WriteIdx(calcPos(NextFileIdx), Integer.BYTES);
 
     private int pos;
